@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { FileSpreadsheet, Upload, X } from "lucide-react"
-import { read, utils } from "xlsx"
+import ExcelJS from "exceljs"
 
 interface ExcelUploadProps {
   onDataChange: (data: Record<string, unknown>[] | null, fileName: string) => void
@@ -25,18 +25,40 @@ export function ExcelUpload({ onDataChange, data, fileName }: ExcelUploadProps) 
   const inputRef = useRef<HTMLInputElement>(null)
 
   const processFile = useCallback(
-    (file: File) => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const arrayBuffer = e.target?.result
-        if (!arrayBuffer) return
-        const workbook = read(arrayBuffer, { type: "array" })
-        const sheetName = workbook.SheetNames[0]
-        const sheet = workbook.Sheets[sheetName]
-        const jsonData = utils.sheet_to_json<Record<string, unknown>>(sheet)
-        onDataChange(jsonData, file.name)
+    async (file: File) => {
+      const arrayBuffer = await file.arrayBuffer()
+      const workbook = new ExcelJS.Workbook()
+      
+      if (file.name.endsWith(".csv")) {
+        await workbook.csv.load(arrayBuffer)
+      } else {
+        await workbook.xlsx.load(arrayBuffer)
       }
-      reader.readAsArrayBuffer(file)
+      
+      const worksheet = workbook.worksheets[0]
+      if (!worksheet) return
+      
+      const jsonData: Record<string, unknown>[] = []
+      const headers: string[] = []
+      
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) {
+          row.eachCell((cell, colNumber) => {
+            headers[colNumber - 1] = String(cell.value ?? `Column${colNumber}`)
+          })
+        } else {
+          const rowData: Record<string, unknown> = {}
+          row.eachCell((cell, colNumber) => {
+            const header = headers[colNumber - 1] ?? `Column${colNumber}`
+            rowData[header] = cell.value
+          })
+          if (Object.keys(rowData).length > 0) {
+            jsonData.push(rowData)
+          }
+        }
+      })
+      
+      onDataChange(jsonData, file.name)
     },
     [onDataChange]
   )
