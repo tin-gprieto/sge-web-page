@@ -17,15 +17,30 @@ import {
 } from "@/components/ui/table"
 import { toast } from "sonner"
 import { Shuffle, Loader2, Download, XCircle } from "lucide-react"
-import { utils, writeFile } from "xlsx"
+import ExcelJS from "exceljs"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || ""
 
-function downloadJsonAsExcel(data: Record<string, unknown>[], filename: string) {
-  const worksheet = utils.json_to_sheet(data)
-  const workbook = utils.book_new()
-  utils.book_append_sheet(workbook, worksheet, "Resultado")
-  writeFile(workbook, filename)
+async function downloadJsonAsExcel(data: Record<string, unknown>[], filename: string) {
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet("Resultado")
+  
+  if (data.length > 0) {
+    const headers = Object.keys(data[0])
+    worksheet.addRow(headers)
+    data.forEach(row => {
+      worksheet.addRow(headers.map(h => row[h]))
+    })
+  }
+  
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 export default function SortoutPage() {
@@ -97,9 +112,9 @@ export default function SortoutPage() {
     }
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!resultData || resultData.length === 0) return
-    downloadJsonAsExcel(resultData, "resultado-sorteo.xlsx")
+    await downloadJsonAsExcel(resultData, "resultado-sorteo.xlsx")
     toast.success("Archivo descargado correctamente")
   }
 

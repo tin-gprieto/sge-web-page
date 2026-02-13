@@ -28,7 +28,7 @@ export default function RootLayout({
         <GoogleAuthProvider>
           <div className="flex min-h-screen flex-col">
             <Navbar />
-            <main className="flex-1">
+            <main className="flex-1 bg-primary/10">
               {children}
             </main>
           </div>

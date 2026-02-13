@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogIn, LogOut, User } from "lucide-react"
+import { LogIn, LogOut, User, RefreshCw, Shuffle } from "lucide-react"
 
 const navLinks = [
   { href: "/update", label: "Actualizar" },
@@ -35,19 +35,22 @@ export function Navbar() {
               height={40}
               className="rounded"
             />
-            <span className="text-lg font-semibold text-foreground">SGE</span>
+            <span className="text-lg font-semibold text-foreground">S.G.E.</span>
           </Link>
           <nav className="flex items-center gap-1">
             {navLinks.map((link) => (
+              
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
                   pathname === link.href
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 }`}
               >
+                {link.label === "Actualizar" && <RefreshCw className="h-4 w-4" />}
+                {link.label === "Sortear" && <Shuffle className="h-4 w-4" />}
                 {link.label}
               </Link>
             ))}
@@ -90,7 +93,7 @@ export function Navbar() {
               className="gap-2"
             >
               <LogIn className="h-4 w-4" />
-              {isLoading ? "Conectando..." : "Google Login"}
+              {isLoading ? "Conectando..." : "Login"}
             </Button>
           )}
         </div>
