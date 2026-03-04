@@ -126,10 +126,8 @@ export async function getExpeditionParticipants(
   expedition: string,
   year: number
 ): Promise<ExpeditionResponse> {
-  return apiRequest<ExpeditionResponse>("/expedition", {
-    method: "GET",
-    body: JSON.stringify({ expedition, year }),
-  })
+  const params = new URLSearchParams({ expedition, year: year.toString() })
+  return apiRequest<ExpeditionResponse>(`/expedition?${params}`)
 }
 
 /**
@@ -140,10 +138,8 @@ export async function getParticipantByName(
   firstName: string,
   lastName: string
 ): Promise<ParticipantResponse> {
-  return apiRequest<ParticipantResponse>("/participant", {
-    method: "GET",
-    body: JSON.stringify({ first_name: firstName, last_name: lastName }),
-  })
+  const params = new URLSearchParams({ first_name: firstName, last_name: lastName })
+  return apiRequest<ParticipantResponse>(`/participant?${params}`)
 }
 
 /**
@@ -153,10 +149,8 @@ export async function getParticipantByName(
 export async function getParticipantByCensus(
   census: number
 ): Promise<ParticipantResponse> {
-  return apiRequest<ParticipantResponse>("/participant/census", {
-    method: "GET",
-    body: JSON.stringify({ census }),
-  })
+  const params = new URLSearchParams({ census: census.toString() })
+  return apiRequest<ParticipantResponse>(`/participant/census?${params}`)
 }
 
 /**

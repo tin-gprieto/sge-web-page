@@ -2,7 +2,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8
 
 export async function login(password: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/login`, {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -25,7 +25,7 @@ export async function login(password: string): Promise<{ success: boolean; error
 
 export async function logout(): Promise<void> {
   try {
-    await fetch(`${API_BASE_URL}/logout`, {
+    await fetch(`${API_BASE_URL}/auth/logout`, {
       method: "POST",
       credentials: "include",
     })
@@ -36,11 +36,13 @@ export async function logout(): Promise<void> {
 
 export async function checkAuth(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await fetch(`${API_BASE_URL}/auth/status`, {
       method: "GET",
       credentials: "include",
     })
-    return response.ok
+    if (!response.ok) return false
+    const data = await response.json()
+    return data.authenticated === true
   } catch {
     return false
   }
