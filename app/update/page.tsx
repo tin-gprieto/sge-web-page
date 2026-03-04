@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { useGoogleAuth } from "@/components/google-auth-provider"
 import { ExcelUpload } from "@/components/excel-upload"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,8 +28,6 @@ import { insertParticipants, getExpeditionList, createExpedition, type Expeditio
 import { excelToParticipantsWithWon, validateParticipantData } from "@/lib/models"
 
 export default function UpdatePage() {
-  const { user, login } = useGoogleAuth()
-
   const [expeditions, setExpeditions] = useState<Expedition[]>([])
   const [expeditionId, setExpeditionId] = useState<string>("")
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear().toString())
@@ -94,12 +91,6 @@ export default function UpdatePage() {
   }
 
   const handleSubmit = async () => {
-    if (!user) {
-      toast.error("Debes iniciar sesion con Google para enviar los datos.")
-      login()
-      return
-    }
-
     if (!isFormComplete || !excelData || !selectedExpedition) return
 
     // Validate Excel data
@@ -270,18 +261,10 @@ export default function UpdatePage() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Actualizando...
               </>
-            ) : !user ? (
-              "Iniciar sesion para enviar"
             ) : (
               "Actualizar Expedicion"
             )}
           </Button>
-
-          {!user && (
-            <p className="text-center text-xs text-muted-foreground">
-              Necesitas iniciar sesion con Google para enviar los datos al servidor.
-            </p>
-          )}
         </CardContent>
       </Card>
     </div>

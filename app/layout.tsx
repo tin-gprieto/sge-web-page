@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
-import { GoogleAuthProvider } from '@/components/google-auth-provider'
 import { Navbar } from '@/components/navbar'
 import './globals.css'
 
@@ -25,14 +24,12 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className="font-sans antialiased">
-        <GoogleAuthProvider>
-          <div className="flex min-h-screen flex-col">
-            <Navbar />
-            <main className="flex-1 bg-primary/10">
-              {children}
-            </main>
-          </div>
-        </GoogleAuthProvider>
+        <div className="flex min-h-screen flex-col">
+          <Navbar />
+          <main className="flex-1 bg-primary/10">
+            {children}
+          </main>
+        </div>
         <Toaster position="top-right" richColors />
         <Analytics />
       </body>
