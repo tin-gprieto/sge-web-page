@@ -89,8 +89,6 @@ async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
   
-  console.log("API Request:", url, options.body)
-  
   const response = await fetch(url, {
     ...options,
     credentials: "include",
