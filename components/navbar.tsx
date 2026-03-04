@@ -62,7 +62,7 @@ export function Navbar() {
           className="gap-2 text-muted-foreground hover:text-destructive"
         >
           <LogOut className="h-4 w-4" />
-          <span className="hidden sm:inline">Cerrar sesion</span>
+          <span className="hidden sm:inline">Cerrar sesión</span>
         </Button>
       </div>
     </header>

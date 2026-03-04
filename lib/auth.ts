@@ -14,7 +14,7 @@ export async function login(password: string): Promise<{ success: boolean; error
     }
 
     if (response.status === 401) {
-      return { success: false, error: "Contrasena incorrecta" }
+      return { success: false, error: "Contraseña incorrecta" }
     }
 
     return { success: false, error: "Error del servidor. Intenta de nuevo." }

@@ -22,7 +22,7 @@ export default function LoginPage() {
     setError("")
 
     if (!password.trim()) {
-      setError("Ingresa la contrasena")
+      setError("Ingresa la contraseña")
       return
     }
 
@@ -53,7 +53,7 @@ export default function LoginPage() {
           <div className="flex flex-col items-center gap-1">
             <h1 className="text-xl font-semibold text-foreground">S.G.E.</h1>
             <p className="text-sm text-muted-foreground">
-              Ingresa la contrasena para acceder
+              Ingresa la contraseña para acceder
             </p>
           </div>
         </CardHeader>
@@ -61,14 +61,14 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                Contrasena
+                Contraseña
               </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Ingresa la contrasena"
+                  placeholder="Ingresa la contraseña"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value)
@@ -83,7 +83,7 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   tabIndex={-1}
-                  aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />

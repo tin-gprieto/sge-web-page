@@ -88,19 +88,21 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
-  
+  const { credentials, headers, ...restOptions } = options
   const response = await fetch(url, {
-    ...options,
-    credentials: "include",
+    ...restOptions,
+    credentials: credentials ?? "same-origin",
     headers: {
       "Content-Type": "application/json",
-      ...options.headers,
+      ...headers,
     },
   })
 
   const data = await response.json()
   
-  console.log("API Response:", response.status, data)
+  if (process.env.NODE_ENV !== "production") {
+    console.log("API Response:", response.status, data)
+  }
 
   if (!response.ok) {
     const errorMessage = (data as ApiError).detail || JSON.stringify(data) || "Error en la solicitud"
