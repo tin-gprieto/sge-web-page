@@ -2,17 +2,10 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
-import { useGoogleAuth } from "@/components/google-auth-provider"
+import { usePathname, useRouter } from "next/navigation"
+import { logout } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { LogIn, LogOut, User, RefreshCw, Shuffle, Search } from "lucide-react"
+import { RefreshCw, Shuffle, Search, LogOut } from "lucide-react"
 
 const navLinks = [
   { href: "/buscar", label: "Buscar" },
@@ -22,7 +15,12 @@ const navLinks = [
 
 export function Navbar() {
   const pathname = usePathname()
-  const { user, isLoading, login, logout } = useGoogleAuth()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await logout()
+    router.replace("/login")
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card">
@@ -40,7 +38,6 @@ export function Navbar() {
           </Link>
           <nav className="flex items-center gap-1">
             {navLinks.map((link) => (
-
               <Link
                 key={link.href}
                 href={link.href}
@@ -58,46 +55,15 @@ export function Navbar() {
           </nav>
         </div>
 
-        <div className="flex items-center">
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 px-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.picture} alt={user.name} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden text-sm font-medium text-foreground sm:inline">
-                    {user.name}
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem className="text-muted-foreground text-xs" disabled>
-                  <User className="mr-2 h-3 w-3" />
-                  {user.email}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={logout} className="text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Cerrar sesion
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button
-              onClick={login}
-              disabled={isLoading}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <LogIn className="h-4 w-4" />
-              {isLoading ? "Conectando..." : "Login"}
-            </Button>
-          )}
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleLogout}
+          className="gap-2 text-muted-foreground hover:text-destructive"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="hidden sm:inline">Cerrar sesión</span>
+        </Button>
       </div>
     </header>
   )

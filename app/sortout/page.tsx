@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { useGoogleAuth } from "@/components/google-auth-provider"
 import { ExcelUpload } from "@/components/excel-upload"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -53,8 +52,6 @@ import {
 } from "@/lib/models"
 
 export default function SortoutPage() {
-  const { user, login } = useGoogleAuth()
-
   // Expedition state
   const [expeditions, setExpeditions] = useState<Expedition[]>([])
   const [expeditionId, setExpeditionId] = useState<string>("")
@@ -186,12 +183,6 @@ export default function SortoutPage() {
   }
 
   const handleLottery = async () => {
-    if (!user) {
-      toast.error("Debes iniciar sesion con Google para realizar el sorteo.")
-      login()
-      return
-    }
-
     if (!ratedParticipants || !selectedExpedition || !winnersCount.trim()) return
 
     setIsLotterying(true)
@@ -225,12 +216,6 @@ export default function SortoutPage() {
   }
 
   const handleInsert = async () => {
-    if (!user) {
-      toast.error("Debes iniciar sesion con Google para guardar los datos.")
-      login()
-      return
-    }
-
     if (!lotteryResult || !selectedExpedition) return
 
     setIsInserting(true)
@@ -540,8 +525,6 @@ export default function SortoutPage() {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Realizando sorteo...
                     </>
-                  ) : !user ? (
-                    "Iniciar sesion para sortear"
                   ) : !winnersCount.trim() ? (
                     "Ingresa el número de ganadores"
                   ) : (
@@ -649,8 +632,6 @@ export default function SortoutPage() {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Guardando en base de datos...
                     </>
-                  ) : !user ? (
-                    "Iniciar sesion para guardar"
                   ) : (
                     <>
                       <Database className="mr-2 h-4 w-4" />
@@ -665,12 +646,6 @@ export default function SortoutPage() {
                 </div>
               )}
             </div>
-          )}
-
-          {!user && (
-            <p className="text-center text-xs text-muted-foreground">
-              Necesitas iniciar sesion con Google para realizar el sorteo y guardar los datos.
-            </p>
           )}
         </CardContent>
       </Card>

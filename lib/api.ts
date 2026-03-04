@@ -88,20 +88,21 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
-  
-  console.log("API Request:", url, options.body)
-  
+  const { credentials, headers, ...restOptions } = options
   const response = await fetch(url, {
-    ...options,
+    ...restOptions,
+    credentials: credentials ?? "same-origin",
     headers: {
       "Content-Type": "application/json",
-      ...options.headers,
+      ...headers,
     },
   })
 
   const data = await response.json()
   
-  console.log("API Response:", response.status, data)
+  if (process.env.NODE_ENV !== "production") {
+    console.log("API Response:", response.status, data)
+  }
 
   if (!response.ok) {
     const errorMessage = (data as ApiError).detail || JSON.stringify(data) || "Error en la solicitud"
@@ -127,10 +128,8 @@ export async function getExpeditionParticipants(
   expedition: string,
   year: number
 ): Promise<ExpeditionResponse> {
-  return apiRequest<ExpeditionResponse>("/expedition", {
-    method: "GET",
-    body: JSON.stringify({ expedition, year }),
-  })
+  const params = new URLSearchParams({ expedition, year: year.toString() })
+  return apiRequest<ExpeditionResponse>(`/expedition?${params}`)
 }
 
 /**
@@ -141,10 +140,8 @@ export async function getParticipantByName(
   firstName: string,
   lastName: string
 ): Promise<ParticipantResponse> {
-  return apiRequest<ParticipantResponse>("/participant", {
-    method: "GET",
-    body: JSON.stringify({ first_name: firstName, last_name: lastName }),
-  })
+  const params = new URLSearchParams({ first_name: firstName, last_name: lastName })
+  return apiRequest<ParticipantResponse>(`/participant?${params}`)
 }
 
 /**
@@ -154,10 +151,8 @@ export async function getParticipantByName(
 export async function getParticipantByCensus(
   census: number
 ): Promise<ParticipantResponse> {
-  return apiRequest<ParticipantResponse>("/participant/census", {
-    method: "GET",
-    body: JSON.stringify({ census }),
-  })
+  const params = new URLSearchParams({ census: census.toString() })
+  return apiRequest<ParticipantResponse>(`/participant/census?${params}`)
 }
 
 /**
