@@ -1,11 +1,11 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"
+// Auth calls go through local API routes to avoid cross-origin cookie issues
+// The API routes proxy to the backend and handle cookies as first-party
 
 export async function login(password: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify({ password }),
     })
 
@@ -13,11 +13,11 @@ export async function login(password: string): Promise<{ success: boolean; error
       return { success: true }
     }
 
-    if (response.status === 401) {
-      return { success: false, error: "Contraseña incorrecta" }
+    const data = await response.json().catch(() => ({}))
+    return {
+      success: false,
+      error: data.error || "Error del servidor. Intenta de nuevo.",
     }
-
-    return { success: false, error: "Error del servidor. Intenta de nuevo." }
   } catch {
     return { success: false, error: "No se pudo conectar con el servidor." }
   }
@@ -25,10 +25,7 @@ export async function login(password: string): Promise<{ success: boolean; error
 
 export async function logout(): Promise<void> {
   try {
-    await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: "POST",
-      credentials: "include",
-    })
+    await fetch("/api/auth/logout", { method: "POST" })
   } catch {
     // Silently fail - we redirect to login regardless
   }
@@ -36,9 +33,9 @@ export async function logout(): Promise<void> {
 
 export async function checkAuth(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/status`, {
+    const response = await fetch("/api/auth/status", {
       method: "GET",
-      credentials: "include",
+      cache: "no-store",
     })
     if (!response.ok) return false
     const data = await response.json()
