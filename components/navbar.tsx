@@ -12,11 +12,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogIn, LogOut, User, RefreshCw, Shuffle } from "lucide-react"
+import { LogIn, LogOut, User, RefreshCw, Shuffle, Search } from "lucide-react"
 
 const navLinks = [
   { href: "/update", label: "Actualizar" },
   { href: "/sortout", label: "Sortear" },
+  { href: "/buscar", label: "Buscar" },
 ]
 
 export function Navbar() {
@@ -51,6 +52,7 @@ export function Navbar() {
               >
                 {link.label === "Actualizar" && <RefreshCw className="h-4 w-4" />}
                 {link.label === "Sortear" && <Shuffle className="h-4 w-4" />}
+                {link.label === "Buscar" && <Search className="h-4 w-4" />}
                 {link.label}
               </Link>
             ))}
