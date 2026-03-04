@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
-import { Navbar } from '@/components/navbar'
+import { AuthGuard } from '@/components/auth-guard'
+import { AppShell } from '@/components/app-shell'
 import './globals.css'
 
 const _inter = Inter({ subsets: ["latin"] });
@@ -24,12 +25,11 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className="font-sans antialiased">
-        <div className="flex min-h-screen flex-col">
-          <Navbar />
-          <main className="flex-1 bg-primary/10">
+        <AuthGuard>
+          <AppShell>
             {children}
-          </main>
-        </div>
+          </AppShell>
+        </AuthGuard>
         <Toaster position="top-right" richColors />
         <Analytics />
       </body>

@@ -2,8 +2,10 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
-import { RefreshCw, Shuffle, Search } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { logout } from "@/lib/auth"
+import { Button } from "@/components/ui/button"
+import { RefreshCw, Shuffle, Search, LogOut } from "lucide-react"
 
 const navLinks = [
   { href: "/buscar", label: "Buscar" },
@@ -13,6 +15,12 @@ const navLinks = [
 
 export function Navbar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await logout()
+    router.replace("/login")
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card">
@@ -30,7 +38,6 @@ export function Navbar() {
           </Link>
           <nav className="flex items-center gap-1">
             {navLinks.map((link) => (
-
               <Link
                 key={link.href}
                 href={link.href}
@@ -47,6 +54,16 @@ export function Navbar() {
             ))}
           </nav>
         </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleLogout}
+          className="gap-2 text-muted-foreground hover:text-destructive"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="hidden sm:inline">Cerrar sesion</span>
+        </Button>
       </div>
     </header>
   )
