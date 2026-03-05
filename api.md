@@ -226,7 +226,8 @@ Calculates a score for each participant based on their expedition history. Used 
       "last_name": "string",
       "census": 123456,
       "career": "string",
-      "phone_number": "string"
+      "phone_number": "string",
+      "has_ig_req": true
     }
   ]
 }
@@ -234,16 +235,17 @@ Calculates a score for each participant based on their expedition history. Used 
 
 ### Request Fields
 
-| Field        | Type   | Required |
-|--------------|--------|----------|
-| expedition   | string | yes      |
-| year         | number | yes      |
-| list         | array  | yes      |
-| first_name   | string | yes      |
-| last_name    | string | yes      |
-| census       | number | yes      |
-| career       | string | yes      |
-| phone_number | string | yes      |
+| Field        | Type    | Required | Description                                     |
+|--------------|---------|----------|-------------------------------------------------|
+| expedition   | string  | yes      |                                                 |
+| year         | number  | yes      |                                                 |
+| list         | array   | yes      |                                                 |
+| first_name   | string  | yes      |                                                 |
+| last_name    | string  | yes      |                                                 |
+| census       | number  | yes      |                                                 |
+| career       | string  | yes      |                                                 |
+| phone_number | string  | yes      |                                                 |
+| has_ig_req   | boolean | yes      | True if Excel has Instagram column with content |
 
 ### Response
 ```json

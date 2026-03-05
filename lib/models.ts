@@ -1,8 +1,11 @@
 import ExcelJS from "exceljs"
-import type { Participant, ParticipantWithWon, ParticipantWithScore } from "./api"
+import type { Participant, ParticipantForRate, ParticipantWithWon, ParticipantWithScore } from "./api"
+
+// Base participant fields (without has_ig_req which is computed)
+type ParticipantBaseField = keyof Participant
 
 // Excel column mappings - maps Excel headers to API field names
-const EXCEL_TO_API_MAP: Record<string, keyof Participant> = {
+const EXCEL_TO_API_MAP: Record<string, ParticipantBaseField> = {
   // Spanish headers (sortout specific)
   nombre: "first_name",
   "nombre(s)": "first_name",
@@ -74,7 +77,7 @@ function normalizeHeader(header: string): string {
 /**
  * Maps an Excel header to its API field name
  */
-function mapExcelHeader(header: string): keyof Participant | null {
+function mapExcelHeader(header: string): ParticipantBaseField | null {
   const normalized = normalizeHeader(header)
   
   for (const [excelKey, apiKey] of Object.entries(EXCEL_TO_API_MAP)) {
@@ -87,24 +90,38 @@ function mapExcelHeader(header: string): keyof Participant | null {
 }
 
 /**
- * Transforms Excel data (generic records) to Participant array
+ * Checks if a header is the Instagram column
+ */
+function isInstagramHeader(header: string): boolean {
+  const normalized = normalizeHeader(header)
+  return normalized === "instagram" || normalized === "ig"
+}
+
+/**
+ * Transforms Excel data (generic records) to ParticipantForRate array
  * Handles different column naming conventions
+ * Includes has_ig_req based on Instagram column presence and content
  */
 export function excelToParticipants(
   excelData: Record<string, unknown>[]
-): Participant[] {
+): ParticipantForRate[] {
   if (!excelData || excelData.length === 0) {
     return []
   }
 
   // Get headers from first row and create mapping
   const headers = Object.keys(excelData[0])
-  const headerMapping: Record<string, keyof Participant> = {}
+  const headerMapping: Record<string, ParticipantBaseField> = {}
+  let instagramHeader: string | null = null
 
   for (const header of headers) {
     const apiField = mapExcelHeader(header)
     if (apiField) {
       headerMapping[header] = apiField
+    }
+    // Check for instagram column
+    if (isInstagramHeader(header)) {
+      instagramHeader = header
     }
   }
 
@@ -123,12 +140,20 @@ export function excelToParticipants(
       }
     }
 
+    // Determine has_ig_req based on instagram column
+    let hasIgReq = false
+    if (instagramHeader) {
+      const igValue = row[instagramHeader]
+      hasIgReq = igValue !== null && igValue !== undefined && String(igValue).trim().length > 0
+    }
+
     return {
       first_name: participant.first_name || "",
       last_name: participant.last_name || "",
       census: participant.census || 0,
       career: participant.career || "",
       phone_number: participant.phone_number || "",
+      has_ig_req: hasIgReq,
     }
   }).filter((p) => 
     // Filter out invalid participants (must have name, last name, and valid census)

@@ -293,12 +293,15 @@ export default function SortoutPage() {
             </h4>
             <ul className="space-y-1.5 text-sm text-muted-foreground">
               <li><span className="font-medium text-foreground">x2</span>: Si se anotó a la expedición del sorteo pero no fue sorteado</li>
-              <li><span className="font-medium text-foreground">x2</span>: Si se arrobó a dos fiubenses en Instagram (PENDIENTE)</li>
               <li><span className="font-medium text-foreground">x1,5</span>: Si se está en la base de datos pero no fue a ninguna expedición</li>
               <li><span className="font-medium text-foreground">x1</span>: Nunca vino a ninguna expedición (no se encuentra en la base de datos)</li>
               <li><span className="font-medium text-foreground">x0,5</span>: Vino alguna expedición (diferente a la que se está sorteando)</li>
               <li><span className="font-medium text-foreground">x0,25</span>: Ya fue alguna vez a la expedición que se está sorteando</li>
             </ul>
+            <br />  
+            <span className="space-y-1.5 text-sm font-semibold text-foreground">
+              Si se arrobó a dos fiubenses en Instagram su puntaje actual se <b>duplicará</b>
+            </span>
           </div>
 
           {/* Step 1: Configuration */}

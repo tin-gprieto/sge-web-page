@@ -9,6 +9,11 @@ export interface Participant {
   phone_number: string
 }
 
+// Participant with Instagram requirement (only for rate request)
+export interface ParticipantForRate extends Participant {
+  has_ig_req: boolean
+}
+
 export interface ParticipantWithScore extends Participant {
   score: number
 }
@@ -30,7 +35,7 @@ export interface ParticipantResponse {
 export interface RateRequest {
   expedition: string
   year: number
-  list: Participant[]
+  list: ParticipantForRate[]
 }
 
 export interface RateResponse {
