@@ -45,8 +45,8 @@ export default function LoginPage() {
           <Image
             src="/logo.png"
             alt="SGE Logo"
-            width={80}
-            height={80}
+            width={60}
+            height={60}
             className="rounded-xl"
             style={{ width: 'auto', height: 'auto' }}
             priority
