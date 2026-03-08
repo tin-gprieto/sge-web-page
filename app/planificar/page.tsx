@@ -367,14 +367,14 @@ export default function PlanificarPage() {
         <CardContent>
           <Tabs defaultValue="disponibilidad" className="w-full">
             <TabsList className="mb-6 w-full">
+              <TabsTrigger value="cursos" className="flex-1">
+                Cursos por carrera
+              </TabsTrigger>
               <TabsTrigger value="disponibilidad" className="flex-1">
                 Disponibilidad
               </TabsTrigger>
               <TabsTrigger value="planificacion" className="flex-1">
-                Planificacion de Pasadas
-              </TabsTrigger>
-              <TabsTrigger value="cursos" className="flex-1">
-                Cursos por Carrera
+                Pasadas
               </TabsTrigger>
             </TabsList>
 
@@ -452,8 +452,8 @@ export default function PlanificarPage() {
                   ) : (
                     <WeeklyCalendar
                       events={availabilityCalendarEvents}
-                      cellHeight={40}
-                      className="max-h-[600px]"
+                      cellHeight={60}
+                      className="max-h-[1400px]"
                     />
                   )}
                 </>
@@ -683,8 +683,8 @@ export default function PlanificarPage() {
                     /* Calendar View - Single calendar with course type filter */
                     <WeeklyCalendar
                       eventGroups={scheduleEventGroups}
-                      cellHeight={40}
-                      className="max-h-[600px]"
+                      cellHeight={60}
+                      className="max-h-[1400px]"
                       courseTypes={scheduleCourseTypes}
                       selectedCourseType={scheduleFilterCourseType}
                       onCourseTypeChange={setScheduleFilterCourseType}
@@ -804,8 +804,8 @@ export default function PlanificarPage() {
                   ) : (
                     <WeeklyCalendar
                       eventGroups={subjectsEventGroups}
-                      cellHeight={40}
-                      className="max-h-[600px]"
+                      cellHeight={60}
+                      className="max-h-[1400px]"
                       courseTypes={subjectsCourseTypes}
                       selectedCourseType={cursosFilterCourseType}
                       onCourseTypeChange={setCursosFilterCourseType}

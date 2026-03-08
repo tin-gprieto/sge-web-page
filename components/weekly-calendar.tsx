@@ -319,7 +319,7 @@ export function WeeklyCalendar({
                                 )}
                                 {hasMultiple && (
                                   <span className="text-[8px] text-muted-foreground">
-                                    Hover para ver
+                                    Mantener para más detalles
                                   </span>
                                 )}
                                 {!hasMultiple && firstEvent.labels && firstEvent.labels.length > 0 && (
