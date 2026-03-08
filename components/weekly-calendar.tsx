@@ -318,6 +318,49 @@ export function availabilityToCalendarEvents(
   return events
 }
 
+// Helper to convert Subject list to EventGroups (grouped by curse_type)
+export function subjectsToEventGroups(
+  subjects: Array<{
+    subject: string
+    curse_type: string
+    day: string
+    starts_at: number
+    room: string
+    build: string
+  }>
+): EventGroup[] {
+  const groupedByCourseType: Record<string, EventGroup> = {}
+
+  subjects.forEach((s, index) => {
+    const groupKey = s.curse_type
+
+    if (!groupedByCourseType[groupKey]) {
+      groupedByCourseType[groupKey] = {
+        groupTitle: s.curse_type.charAt(0).toUpperCase() + s.curse_type.slice(1),
+        events: [],
+      }
+    }
+
+    groupedByCourseType[groupKey].events.push({
+      id: `subject-${s.subject}-${s.day}-${index}`,
+      title: s.subject,
+      subtitle: `${s.room} · ${s.build}`,
+      day: s.day,
+      startsAt: s.starts_at,
+      finishesAt: s.starts_at + 1,
+      labels: [s.build, s.room],
+      color: getColorFromString(s.curse_type),
+      metadata: {
+        room: s.room,
+        build: s.build,
+        type: s.curse_type,
+      },
+    })
+  })
+
+  return Object.values(groupedByCourseType)
+}
+
 // Helper to convert ScheduledClass to EventGroups (grouped by curse_type)
 export function scheduleToEventGroups(
   scheduleData: Array<{

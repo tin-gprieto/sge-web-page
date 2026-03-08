@@ -29,6 +29,7 @@ import {
   WeeklyCalendar,
   availabilityToCalendarEvents,
   scheduleToEventGroups,
+  subjectsToEventGroups,
   type CalendarEvent,
   type EventGroup,
 } from "@/components/weekly-calendar"
@@ -36,9 +37,11 @@ import {
   getCareers,
   getAvailability,
   calculateSchedule,
+  getSubjects,
   type Career,
   type AvailabilityEntry,
   type ScheduledClass,
+  type Subject,
 } from "@/lib/api"
 
 const DAYS_OF_WEEK = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"]
@@ -113,6 +116,13 @@ export default function PlanificarPage() {
   const [loadingSchedule, setLoadingSchedule] = useState(false)
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const [selectedPerson, setSelectedPerson] = useState<string>("")
+
+  // Cursos por carrera state
+  const [cursosViewMode, setCursosViewMode] = useState<ViewMode>("lista")
+  const [cursosCareer, setCursosCareer] = useState<string>("")
+  const [subjectsData, setSubjectsData] = useState<Subject[]>([])
+  const [loadingSubjects, setLoadingSubjects] = useState(false)
+  const [subjectsError, setSubjectsError] = useState<string | null>(null)
 
   // Fetch careers on mount
   useEffect(() => {
@@ -247,6 +257,35 @@ export default function PlanificarPage() {
     return sortedSchedule
   }
 
+  // Fetch subjects for selected career (Cursos tab)
+  const handleFetchSubjects = async () => {
+    if (!cursosCareer) {
+      toast.error("Selecciona una carrera")
+      return
+    }
+    setLoadingSubjects(true)
+    setSubjectsError(null)
+    setSubjectsData([])
+    try {
+      const response = await getSubjects(parseInt(cursosCareer, 10))
+      setSubjectsData(response.list)
+      if (response.list.length === 0) {
+        toast.info("No se encontraron cursos para esta carrera")
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error al obtener cursos"
+      setSubjectsError(message)
+      toast.error(message)
+    } finally {
+      setLoadingSubjects(false)
+    }
+  }
+
+  // Convert subjects to event groups grouped by curse_type
+  const subjectsEventGroups = useMemo(() => {
+    return subjectsToEventGroups(subjectsData)
+  }, [subjectsData])
+
   // Convert availability data to calendar events
   const availabilityCalendarEvents = useMemo(() => {
     return availabilityToCalendarEvents(availabilityData)
@@ -306,6 +345,9 @@ export default function PlanificarPage() {
               </TabsTrigger>
               <TabsTrigger value="planificacion" className="flex-1">
                 Planificacion de Pasadas
+              </TabsTrigger>
+              <TabsTrigger value="cursos" className="flex-1">
+                Cursos por Carrera
               </TabsTrigger>
             </TabsList>
 
@@ -687,6 +729,138 @@ export default function PlanificarPage() {
               {!loadingSchedule && scheduleData.length === 0 && !scheduleError && (
                 <div className="rounded-lg border border-border/50 bg-muted/30 p-8 text-center text-muted-foreground">
                   <p>Selecciona los parámetros y planifica las pasadas</p>
+                </div>
+              )}
+            </TabsContent>
+            {/* Cursos por Carrera Tab */}
+            <TabsContent value="cursos" className="flex flex-col gap-6">
+              <div className="rounded-lg border border-border bg-card p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-2 flex-1">
+                    <div className="flex-1 max-w-xs">
+                      <Label className="text-foreground mb-2 block">Carrera</Label>
+                      <Select value={cursosCareer} onValueChange={setCursosCareer} disabled={loadingCareers}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={loadingCareers ? "Cargando carreras..." : "Seleccionar carrera"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {careers.map((career) => (
+                            <SelectItem key={career.career_id} value={career.career_id.toString()}>
+                              {career.career}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleFetchSubjects} disabled={loadingSubjects || !cursosCareer}>
+                      {loadingSubjects ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Cargando...
+                        </>
+                      ) : (
+                        "Cargar Cursos"
+                      )}
+                    </Button>
+                  </div>
+                  {subjectsData.length > 0 && (
+                    <ViewModeToggle value={cursosViewMode} onChange={setCursosViewMode} />
+                  )}
+                </div>
+              </div>
+
+              {subjectsError && (
+                <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                  <XCircle className="h-4 w-4 shrink-0" />
+                  <span>{subjectsError}</span>
+                </div>
+              )}
+
+              {subjectsData.length > 0 && (
+                <>
+                  {cursosViewMode === "lista" ? (
+                    <div className="rounded-lg border border-border bg-card overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+                        <span className="text-sm font-medium text-foreground">
+                          {subjectsData.length} cursos encontrados
+                        </span>
+                      </div>
+                      <ScrollArea className="w-full">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted">
+                              <TableHead className="text-xs font-semibold text-foreground">Asignatura</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Tipo</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Dia</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Horario</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Aula</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Edificio</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {subjectsData.map((subject, idx) => (
+                              <TableRow key={idx}>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  {subject.subject}
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  <Badge variant="secondary" className="text-xs capitalize">
+                                    {subject.curse_type}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  {subject.day}
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  {subject.starts_at}:00
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  {subject.room}
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
+                                    {subject.build}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {subjectsEventGroups.map((group) => (
+                        <div key={group.groupTitle} className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="capitalize">
+                              {group.groupTitle}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              ({group.events.length} cursos)
+                            </span>
+                          </div>
+                          <WeeklyCalendar
+                            events={group.events}
+                            cellHeight={48}
+                            className="max-h-[500px]"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {loadingSubjects && (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              )}
+
+              {!loadingSubjects && subjectsData.length === 0 && !subjectsError && (
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-8 text-center text-muted-foreground">
+                  <p>Selecciona una carrera y carga los cursos</p>
                 </div>
               )}
             </TabsContent>
