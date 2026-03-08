@@ -115,9 +115,11 @@ export default function PlanificarPage() {
   const [scheduleData, setScheduleData] = useState<ScheduledClass[]>([])
   const [loadingSchedule, setLoadingSchedule] = useState(false)
   const [scheduleError, setScheduleError] = useState<string | null>(null)
-  const [selectedPerson, setSelectedPerson] = useState<string>("")
+  const [selectedPerson, setSelectedPerson] = useState<string>("todos")
+  const [scheduleFilterCourseType, setScheduleFilterCourseType] = useState<string>("todos")
 
   // Cursos por carrera state
+  const [cursosFilterCourseType, setCursosFilterCourseType] = useState<string>("todos")
   const [cursosViewMode, setCursosViewMode] = useState<ViewMode>("lista")
   const [cursosCareer, setCursosCareer] = useState<string>("")
   const [subjectsData, setSubjectsData] = useState<Subject[]>([])
@@ -291,14 +293,38 @@ export default function PlanificarPage() {
     return availabilityToCalendarEvents(availabilityData)
   }, [availabilityData])
 
-  // Convert schedule data to event groups (grouped by curse_type)
+  // Filter schedule data by selected person
+  const filteredScheduleData = useMemo(() => {
+    if (selectedPerson === "todos" || !selectedPerson) {
+      return scheduleData
+    }
+    return scheduleData.filter((course) =>
+      course.responsibles.includes(selectedPerson)
+    )
+  }, [scheduleData, selectedPerson])
+
+  // Convert filtered schedule data to event groups (grouped by curse_type)
   const scheduleEventGroups = useMemo(() => {
-    return scheduleToEventGroups(scheduleData)
+    return scheduleToEventGroups(filteredScheduleData)
+  }, [filteredScheduleData])
+
+  // Get unique course types from schedule data
+  const scheduleCourseTypes = useMemo(() => {
+    const types = new Set<string>()
+    scheduleData.forEach((course) => types.add(course.curse_type))
+    return Array.from(types)
   }, [scheduleData])
+
+  // Get unique course types from subjects data
+  const subjectsCourseTypes = useMemo(() => {
+    const types = new Set<string>()
+    subjectsData.forEach((subject) => types.add(subject.curse_type))
+    return Array.from(types)
+  }, [subjectsData])
 
   // Copy personal schedule to clipboard
   const copyPersonalScheduleToClipboard = () => {
-    if (!selectedPerson) return
+    if (!selectedPerson || selectedPerson === "todos") return
 
     const personSchedule = getPersonSchedule()
     let text = `Horario de ${selectedPerson}\n`
@@ -307,9 +333,10 @@ export default function PlanificarPage() {
     Object.entries(personSchedule).forEach(([day, courses]) => {
       text += `${day}:\n`
       courses.forEach((course) => {
-        text += `  • ${course.subject} (${course.curse_type})\n`
+        text += `  - ${course.subject} (${course.curse_type})\n`
         text += `    Hora: ${course.starts_at}:00 | Aula: ${course.room} | Edificio: ${course.build}\n`
-        text += `    Compañeros: ${course.responsibles.filter(p => p !== selectedPerson).join(", ") || "N/A"}\n`
+        const companions = course.responsibles.filter(p => p !== selectedPerson)
+        text += `    Companeros: ${companions.length > 0 ? companions.join(", ") : "N/A"}\n`
       })
       text += `\n`
     })
@@ -425,7 +452,7 @@ export default function PlanificarPage() {
                   ) : (
                     <WeeklyCalendar
                       events={availabilityCalendarEvents}
-                      cellHeight={48}
+                      cellHeight={40}
                       className="max-h-[600px]"
                     />
                   )}
@@ -555,167 +582,113 @@ export default function PlanificarPage() {
 
               {scheduleData.length > 0 && (
                 <div className="space-y-6">
-                  {/* View Mode Toggle */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">
-                      {scheduleData.length} cursos planificados
-                    </span>
-                    <ViewModeToggle
-                      value={scheduleViewMode}
-                      onChange={setScheduleViewMode}
-                    />
+                  {/* Filters and View Mode Toggle */}
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-3 flex-1">
+                      <div className="flex-1 max-w-xs">
+                        <Label className="text-foreground mb-2 block text-xs">Filtrar por Persona</Label>
+                        <Select value={selectedPerson} onValueChange={setSelectedPerson}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Todos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos</SelectItem>
+                            {getAllPersons().map((person) => (
+                              <SelectItem key={person} value={person}>
+                                {person}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {selectedPerson && selectedPerson !== "todos" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={copyPersonalScheduleToClipboard}
+                          className="gap-2 h-9"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          Copiar Horario
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground">
+                        {filteredScheduleData.length} cursos
+                      </span>
+                      <ViewModeToggle
+                        value={scheduleViewMode}
+                        onChange={setScheduleViewMode}
+                      />
+                    </div>
                   </div>
 
                   {scheduleViewMode === "lista" ? (
-                    <>
-                      {/* Schedule Table */}
-                      <div className="rounded-lg border border-border bg-card overflow-hidden">
-                        <ScrollArea className="w-full">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-muted">
-                                <TableHead className="text-xs font-semibold text-foreground">Asignatura</TableHead>
-                                <TableHead className="text-xs font-semibold text-foreground">Tipo</TableHead>
-                                <TableHead className="text-xs font-semibold text-foreground">Dia</TableHead>
-                                <TableHead className="text-xs font-semibold text-foreground">Horario</TableHead>
-                                <TableHead className="text-xs font-semibold text-foreground">Aula</TableHead>
-                                <TableHead className="text-xs font-semibold text-foreground">Edificio</TableHead>
-                                <TableHead className="text-xs font-semibold text-foreground">Responsables</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {scheduleData.map((course, idx) => (
-                                <TableRow key={idx}>
-                                  <TableCell className="text-xs text-foreground whitespace-nowrap">
-                                    {course.subject}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-foreground whitespace-nowrap">
-                                    <Badge variant="secondary" className="text-xs capitalize">
-                                      {course.curse_type}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="text-xs text-foreground whitespace-nowrap">
-                                    {course.day}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-foreground whitespace-nowrap">
-                                    {course.starts_at}:00
-                                  </TableCell>
-                                  <TableCell className="text-xs text-foreground whitespace-nowrap">
-                                    {course.room}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-foreground whitespace-nowrap">
-                                    <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
-                                      {course.build}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="text-xs text-foreground">
-                                    <div className="flex flex-wrap gap-1">
-                                      {course.responsibles.map((person, i) => (
-                                        <Badge key={i} variant="outline" className="text-xs">
-                                          {person}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </ScrollArea>
-                      </div>
-
-                      {/* Personal Schedule Section */}
-                      <div className="rounded-lg border border-border bg-card p-4">
-                        <div className="mb-4">
-                          <Label className="text-foreground mb-2 block">Seleccionar Persona</Label>
-                          <Select value={selectedPerson} onValueChange={setSelectedPerson}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona una persona para ver su horario" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getAllPersons().map((person) => (
-                                <SelectItem key={person} value={person}>
-                                  {person}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {selectedPerson && (
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="font-semibold text-foreground">Horario de {selectedPerson}</h3>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={copyPersonalScheduleToClipboard}
-                                className="gap-2"
-                              >
-                                <Copy className="h-4 w-4" />
-                                Copiar
-                              </Button>
-                            </div>
-
-                            {Object.entries(getPersonSchedule()).length > 0 ? (
-                              <div className="space-y-3">
-                                {Object.entries(getPersonSchedule()).map(([day, courses]) => (
-                                  <div key={day} className="rounded-lg border border-border/50 p-3 bg-muted/30">
-                                    <h4 className="font-semibold text-foreground mb-2 text-sm">{day}</h4>
-                                    <div className="space-y-2">
-                                      {courses.map((course, idx) => (
-                                        <div key={idx} className="text-sm bg-background rounded p-2 border border-border/30">
-                                          <div className="font-medium text-foreground">{course.subject}</div>
-                                          <div className="text-xs text-muted-foreground mt-1 space-y-1">
-                                            <div>Tipo: <span className="capitalize">{course.curse_type}</span></div>
-                                            <div>Hora: <span>{course.starts_at}:00</span></div>
-                                            <div>Aula: <span>{course.room}</span></div>
-                                            <div>Edificio: <span className="font-medium">{course.build}</span></div>
-                                            <div>
-                                              Compañeros: 
-                                              <span className="ml-1">
-                                                {course.responsibles.filter(p => p !== selectedPerson).length > 0
-                                                  ? course.responsibles.filter(p => p !== selectedPerson).join(", ")
-                                                  : "N/A"}
-                                              </span>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
+                    <div className="rounded-lg border border-border bg-card overflow-hidden">
+                      <ScrollArea className="w-full">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted">
+                              <TableHead className="text-xs font-semibold text-foreground">Asignatura</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Tipo</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Dia</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Horario</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Aula</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Edificio</TableHead>
+                              <TableHead className="text-xs font-semibold text-foreground">Responsables</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredScheduleData.map((course, idx) => (
+                              <TableRow key={idx}>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  {course.subject}
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  <Badge variant="secondary" className="text-xs capitalize">
+                                    {course.curse_type}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  {course.day}
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  {course.starts_at}:00
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  {course.room}
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
+                                    {course.build}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground">
+                                  <div className="flex flex-wrap gap-1">
+                                    {course.responsibles.map((person, i) => (
+                                      <Badge key={i} variant="outline" className="text-xs">
+                                        {person}
+                                      </Badge>
+                                    ))}
                                   </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-center text-sm text-muted-foreground">
-                                Esta persona no tiene clases asignadas
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    /* Calendar View - Grouped by Course Type */
-                    <div className="space-y-6">
-                      {scheduleEventGroups.map((group) => (
-                        <div key={group.groupTitle} className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="capitalize">
-                              {group.groupTitle}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              ({group.events.length} cursos)
-                            </span>
-                          </div>
-                          <WeeklyCalendar
-                            events={group.events}
-                            cellHeight={48}
-                            className="max-h-[500px]"
-                          />
-                        </div>
-                      ))}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
                     </div>
+                  ) : (
+                    /* Calendar View - Single calendar with course type filter */
+                    <WeeklyCalendar
+                      eventGroups={scheduleEventGroups}
+                      cellHeight={40}
+                      className="max-h-[600px]"
+                      courseTypes={scheduleCourseTypes}
+                      selectedCourseType={scheduleFilterCourseType}
+                      onCourseTypeChange={setScheduleFilterCourseType}
+                    />
                   )}
                 </div>
               )}
@@ -829,25 +802,14 @@ export default function PlanificarPage() {
                       </ScrollArea>
                     </div>
                   ) : (
-                    <div className="space-y-6">
-                      {subjectsEventGroups.map((group) => (
-                        <div key={group.groupTitle} className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="capitalize">
-                              {group.groupTitle}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              ({group.events.length} cursos)
-                            </span>
-                          </div>
-                          <WeeklyCalendar
-                            events={group.events}
-                            cellHeight={48}
-                            className="max-h-[500px]"
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    <WeeklyCalendar
+                      eventGroups={subjectsEventGroups}
+                      cellHeight={40}
+                      className="max-h-[600px]"
+                      courseTypes={subjectsCourseTypes}
+                      selectedCourseType={cursosFilterCourseType}
+                      onCourseTypeChange={setCursosFilterCourseType}
+                    />
                   )}
                 </>
               )}
