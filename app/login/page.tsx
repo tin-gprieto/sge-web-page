@@ -48,7 +48,7 @@ export default function LoginPage() {
             width={60}
             height={60}
             className="rounded-xl"
-            style={{ width: 'auto', height: 'auto' }}
+            style={{ width: '140px', height: '140px' }}
             priority
           />
           <div className="flex flex-col items-center gap-1">

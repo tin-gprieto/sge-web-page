@@ -5,12 +5,13 @@ import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { logout } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, Shuffle, Search, LogOut } from "lucide-react"
+import { RefreshCw, Shuffle, Search, Calendar, LogOut } from "lucide-react"
 
 const navLinks = [
   { href: "/buscar", label: "Buscar" },
   { href: "/update", label: "Actualizar" },
   { href: "/sortout", label: "Sortear" },
+  { href: "/planificar", label: "Planificar" },
 ]
 
 export function Navbar() {
@@ -50,6 +51,7 @@ export function Navbar() {
                 {link.label === "Buscar" && <Search className="h-4 w-4" />}
                 {link.label === "Actualizar" && <RefreshCw className="h-4 w-4" />}
                 {link.label === "Sortear" && <Shuffle className="h-4 w-4" />}
+                {link.label === "Planificar" && <Calendar className="h-4 w-4" />}
                 {link.label}
               </Link>
             ))}
