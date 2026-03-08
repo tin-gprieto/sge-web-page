@@ -34,7 +34,7 @@ export function Navbar() {
               width={40}
               height={40}
               className="rounded"
-              style={{ width: 'auto', height: 'auto' }}
+              style={{ width: '40px', height: '40px' }}
             />
             <span className="text-lg font-semibold text-foreground">S.G.E.</span>
           </Link>
