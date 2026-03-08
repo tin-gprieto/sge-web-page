@@ -12,6 +12,7 @@ export default function Home() {
           width={120}
           height={120}
           className="rounded-xl"
+          style={{ width: 'auto', height: 'auto' }}
           priority
         />
         <div className="flex flex-col gap-2">
