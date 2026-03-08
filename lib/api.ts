@@ -221,3 +221,101 @@ export async function createExpedition(
     body: JSON.stringify({ name }),
   })
 }
+
+// Schedule Microservice Types
+export interface Career {
+  career_id: number
+  career: string
+}
+
+export interface CareersResponse {
+  list: Career[]
+}
+
+export interface AvailabilityEntry {
+  person: string
+  day: string
+  starts_at: number
+  finishes_at: number
+  build: string
+}
+
+export interface AvailabilityResponse {
+  list: AvailabilityEntry[]
+}
+
+export interface Subject {
+  subject: string
+  curse_type: string
+  day: string
+  starts_at: number
+  room: string
+  build: string
+}
+
+export interface SubjectsResponse {
+  list: Subject[]
+}
+
+export interface ScheduleRequest {
+  career_id: number
+  course_type: string[]
+  build: string | null
+  min_responsibles: number
+}
+
+export interface ScheduledClass extends Subject {
+  responsibles: string[]
+}
+
+export interface ScheduleResponse {
+  list: ScheduledClass[]
+}
+
+/**
+ * Get list of careers
+ * GET /careers
+ */
+export async function getCareers(): Promise<CareersResponse> {
+  return apiRequest<CareersResponse>("/careers", {
+    method: "GET",
+  })
+}
+
+/**
+ * Get availability
+ * GET /availability
+ */
+export async function getAvailability(build?: string): Promise<AvailabilityResponse> {
+  const params = new URLSearchParams()
+  if (build) params.append("build", build)
+  const queryString = params.toString()
+  const endpoint = queryString ? `/availability?${queryString}` : "/availability"
+  return apiRequest<AvailabilityResponse>(endpoint, {
+    method: "GET",
+  })
+}
+
+/**
+ * Get subjects for a career
+ * GET /subjects
+ */
+export async function getSubjects(careerId: number): Promise<SubjectsResponse> {
+  const params = new URLSearchParams({ career_id: careerId.toString() })
+  return apiRequest<SubjectsResponse>(`/subjects?${params}`, {
+    method: "GET",
+  })
+}
+
+/**
+ * Calculate schedule
+ * POST /schedule
+ */
+export async function calculateSchedule(
+  request: ScheduleRequest
+): Promise<ScheduleResponse> {
+  return apiRequest<ScheduleResponse>("/schedule", {
+    method: "POST",
+    body: JSON.stringify(request),
+  })
+}
