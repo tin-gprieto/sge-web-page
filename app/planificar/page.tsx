@@ -254,12 +254,12 @@ export default function PlanificarPage() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-2">
                   <div className="flex-1">
                     <Label className="text-foreground mb-2 block">Edificio</Label>
-                    <Select value={selectedBuild || ""} onValueChange={setSelectedBuild}>
+                    <Select value={selectedBuild || "all"} onValueChange={(v) => setSelectedBuild(v === "all" ? null : v)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Todos los edificios" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todos</SelectItem>
+                        <SelectItem value="all">Todos</SelectItem>
                         {BUILDS.map((build) => (
                           <SelectItem key={build} value={build}>
                             {build}
