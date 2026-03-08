@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { Calendar, Loader2, XCircle } from "lucide-react"
+import { Calendar, Loader2, XCircle, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -61,6 +61,7 @@ export default function PlanificarPage() {
   const [scheduleData, setScheduleData] = useState<ScheduledClass[]>([])
   const [loadingSchedule, setLoadingSchedule] = useState(false)
   const [scheduleError, setScheduleError] = useState<string | null>(null)
+  const [selectedPerson, setSelectedPerson] = useState<string>("")
 
   // Fetch careers on mount
   useEffect(() => {
@@ -155,6 +156,69 @@ export default function PlanificarPage() {
     setSelectedBuilds((prev) =>
       prev.includes(build) ? prev.filter((b) => b !== build) : [...prev, build]
     )
+  }
+
+  // Get all unique persons from schedule data
+  const getAllPersons = (): string[] => {
+    const persons = new Set<string>()
+    scheduleData.forEach((course) => {
+      course.responsibles.forEach((person) => {
+        persons.add(person)
+      })
+    })
+    return Array.from(persons).sort()
+  }
+
+  // Get schedule for selected person organized by day
+  const getPersonSchedule = () => {
+    if (!selectedPerson) return {}
+    
+    const personSchedule: { [day: string]: ScheduledClass[] } = {}
+    
+    scheduleData.forEach((course) => {
+      if (course.responsibles.includes(selectedPerson)) {
+        if (!personSchedule[course.day]) {
+          personSchedule[course.day] = []
+        }
+        personSchedule[course.day].push(course)
+      }
+    })
+
+    // Sort by day order
+    const sortedSchedule: { [day: string]: ScheduledClass[] } = {}
+    DAYS_OF_WEEK.forEach((day) => {
+      if (personSchedule[day]) {
+        // Sort courses by start time
+        sortedSchedule[day] = personSchedule[day].sort((a, b) => a.starts_at - b.starts_at)
+      }
+    })
+
+    return sortedSchedule
+  }
+
+  // Copy personal schedule to clipboard
+  const copyPersonalScheduleToClipboard = () => {
+    if (!selectedPerson) return
+
+    const personSchedule = getPersonSchedule()
+    let text = `Horario de ${selectedPerson}\n`
+    text += `${'='.repeat(50)}\n\n`
+
+    Object.entries(personSchedule).forEach(([day, courses]) => {
+      text += `${day}:\n`
+      courses.forEach((course) => {
+        text += `  • ${course.subject} (${course.curse_type})\n`
+        text += `    Hora: ${course.starts_at}:00 | Aula: ${course.room} | Edificio: ${course.build}\n`
+        text += `    Compañeros: ${course.responsibles.filter(p => p !== selectedPerson).join(", ") || "N/A"}\n`
+      })
+      text += `\n`
+    })
+
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success("Horario copiado al portapapeles")
+    }).catch(() => {
+      toast.error("Error al copiar al portapapeles")
+    })
   }
 
   return (
@@ -369,59 +433,133 @@ export default function PlanificarPage() {
               )}
 
               {scheduleData.length > 0 && (
-                <div className="rounded-lg border border-border bg-card overflow-hidden">
-                  <ScrollArea className="w-full">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted">
-                          <TableHead className="text-xs font-semibold text-foreground">Asignatura</TableHead>
-                          <TableHead className="text-xs font-semibold text-foreground">Tipo</TableHead>
-                          <TableHead className="text-xs font-semibold text-foreground">Dia</TableHead>
-                          <TableHead className="text-xs font-semibold text-foreground">Horario</TableHead>
-                          <TableHead className="text-xs font-semibold text-foreground">Aula</TableHead>
-                          <TableHead className="text-xs font-semibold text-foreground">Edificio</TableHead>
-                          <TableHead className="text-xs font-semibold text-foreground">Responsables</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {scheduleData.map((course, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="text-xs text-foreground whitespace-nowrap">
-                              {course.subject}
-                            </TableCell>
-                            <TableCell className="text-xs text-foreground whitespace-nowrap">
-                              <Badge variant="secondary" className="text-xs capitalize">
-                                {course.curse_type}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs text-foreground whitespace-nowrap">
-                              {course.day}
-                            </TableCell>
-                            <TableCell className="text-xs text-foreground whitespace-nowrap">
-                              {course.starts_at}:00
-                            </TableCell>
-                            <TableCell className="text-xs text-foreground whitespace-nowrap">
-                              {course.room}
-                            </TableCell>
-                            <TableCell className="text-xs text-foreground whitespace-nowrap">
-                              <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
-                                {course.build}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs text-foreground">
-                              <div className="flex flex-wrap gap-1">
-                                {course.responsibles.map((person, i) => (
-                                  <Badge key={i} variant="outline" className="text-xs">
-                                    {person}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </TableCell>
+                <div className="space-y-6">
+                  {/* Schedule Table */}
+                  <div className="rounded-lg border border-border bg-card overflow-hidden">
+                    <ScrollArea className="w-full">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted">
+                            <TableHead className="text-xs font-semibold text-foreground">Asignatura</TableHead>
+                            <TableHead className="text-xs font-semibold text-foreground">Tipo</TableHead>
+                            <TableHead className="text-xs font-semibold text-foreground">Dia</TableHead>
+                            <TableHead className="text-xs font-semibold text-foreground">Horario</TableHead>
+                            <TableHead className="text-xs font-semibold text-foreground">Aula</TableHead>
+                            <TableHead className="text-xs font-semibold text-foreground">Edificio</TableHead>
+                            <TableHead className="text-xs font-semibold text-foreground">Responsables</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
+                        </TableHeader>
+                        <TableBody>
+                          {scheduleData.map((course, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                {course.subject}
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                <Badge variant="secondary" className="text-xs capitalize">
+                                  {course.curse_type}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                {course.day}
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                {course.starts_at}:00
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                {course.room}
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground whitespace-nowrap">
+                                <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
+                                  {course.build}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground">
+                                <div className="flex flex-wrap gap-1">
+                                  {course.responsibles.map((person, i) => (
+                                    <Badge key={i} variant="outline" className="text-xs">
+                                      {person}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </div>
+
+                  {/* Personal Schedule Section */}
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <div className="mb-4">
+                      <Label className="text-foreground mb-2 block">Seleccionar Persona</Label>
+                      <Select value={selectedPerson} onValueChange={setSelectedPerson}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona una persona para ver su horario" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAllPersons().map((person) => (
+                            <SelectItem key={person} value={person}>
+                              {person}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedPerson && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-semibold text-foreground">Horario de {selectedPerson}</h3>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={copyPersonalScheduleToClipboard}
+                            className="gap-2"
+                          >
+                            <Copy className="h-4 w-4" />
+                            Copiar
+                          </Button>
+                        </div>
+
+                        {Object.entries(getPersonSchedule()).length > 0 ? (
+                          <div className="space-y-3">
+                            {Object.entries(getPersonSchedule()).map(([day, courses]) => (
+                              <div key={day} className="rounded-lg border border-border/50 p-3 bg-muted/30">
+                                <h4 className="font-semibold text-foreground mb-2 text-sm">{day}</h4>
+                                <div className="space-y-2">
+                                  {courses.map((course, idx) => (
+                                    <div key={idx} className="text-sm bg-background rounded p-2 border border-border/30">
+                                      <div className="font-medium text-foreground">{course.subject}</div>
+                                      <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                                        <div>Tipo: <span className="capitalize">{course.curse_type}</span></div>
+                                        <div>Hora: <span>{course.starts_at}:00</span></div>
+                                        <div>Aula: <span>{course.room}</span></div>
+                                        <div>Edificio: <span className="font-medium">{course.build}</span></div>
+                                        <div>
+                                          Compañeros: 
+                                          <span className="ml-1">
+                                            {course.responsibles.filter(p => p !== selectedPerson).length > 0
+                                              ? course.responsibles.filter(p => p !== selectedPerson).join(", ")
+                                              : "N/A"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-center text-sm text-muted-foreground">
+                            Esta persona no tiene clases asignadas
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
