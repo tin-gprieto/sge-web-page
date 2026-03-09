@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { RefreshCw, Loader2, CheckCircle2, XCircle, Plus } from "lucide-react"
-import { insertParticipants, getExpeditionList, createExpedition, type Expedition } from "@/lib/api"
+import { insertParticipants, getExpeditionList, createExpedition, type Expedition, type ParticipantWithWon } from "@/lib/api"
 import { excelToParticipantsWithWon, validateParticipantDataForUpdate } from "@/lib/models"
 
 export default function UpdatePage() {
@@ -35,6 +35,9 @@ export default function UpdatePage() {
   const [fileName, setFileName] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [result, setResult] = useState<{ success: boolean; reason: string } | null>(null)
+  
+  // Parsed participants list (same pattern as lotteryResult in sortout)
+  const [participantList, setParticipantList] = useState<ParticipantWithWon[] | null>(null)
   
   // New expedition dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -60,6 +63,23 @@ export default function UpdatePage() {
       setExcelData(data)
       setFileName(name)
       setResult(null)
+      
+      // Parse participants from Excel (same pattern as sortout stores lotteryResult)
+      if (data) {
+        const validation = validateParticipantDataForUpdate(data)
+        if (validation.valid) {
+          const parsed = excelToParticipantsWithWon(data)
+          setParticipantList(parsed)
+        } else {
+          setParticipantList(null)
+          setResult({ 
+            success: false, 
+            reason: `Faltan campos requeridos: ${validation.missingFields.join(", ")}` 
+          })
+        }
+      } else {
+        setParticipantList(null)
+      }
     },
     []
   )
@@ -69,7 +89,7 @@ export default function UpdatePage() {
   const isFormComplete =
     expeditionId !== "" &&
     currentYear.trim() !== "" &&
-    excelData !== null
+    participantList !== null && participantList.length > 0
 
   const handleCreateExpedition = async () => {
     if (!newExpeditionName.trim()) return
@@ -91,33 +111,21 @@ export default function UpdatePage() {
   }
 
   const handleSubmit = async () => {
-    if (!isFormComplete || !excelData || !selectedExpedition) return
-
-    // Validate Excel data - only requires padron and Ganador columns
-    const validation = validateParticipantDataForUpdate(excelData)
-    if (!validation.valid) {
-      setResult({ 
-        success: false, 
-        reason: `Faltan campos requeridos: ${validation.missingFields.join(", ")}` 
-      })
-      toast.error("El archivo Excel no tiene los campos requeridos")
-      return
-    }
+    if (!isFormComplete || !participantList || !selectedExpedition) return
 
     setIsSubmitting(true)
     setResult(null)
 
     try {
-      const participantList = excelToParticipantsWithWon(excelData)
-      
-      await insertParticipants({
+      // Same pattern as sortout: pass participantList (like lotteryResult) to insertParticipants
+      const response = await insertParticipants({
         expedition: selectedExpedition.name,
         year: parseInt(currentYear, 10),
         list: participantList,
       })
 
-      setResult({ success: true, reason: `${participantList.length} participantes insertados correctamente` })
-      toast.success("Datos actualizados correctamente")
+      setResult({ success: true, reason: `Guardado: ${response.inserted} insertados, ${response.repeated} repetidos de ${response.total} total` })
+      toast.success(`Guardado: ${response.inserted} insertados, ${response.repeated} repetidos de ${response.total} total`)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error de conexion"
       setResult({ success: false, reason: message })
