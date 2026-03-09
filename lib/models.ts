@@ -164,36 +164,85 @@ export function excelToParticipants(
 }
 
 /**
+ * Finds the "Ganador" header in Excel data
+ */
+function findGanadorHeader(headers: string[]): string | undefined {
+  return headers.find(h => {
+    const normalized = normalizeHeader(h)
+    return normalized === "haswon" || normalized === "ganador" || normalized === "ganado"
+  })
+}
+
+/**
+ * Parses has_won value from Excel
+ * "Si", "Sí", TRUE → true
+ * "No", FALSE → false
+ */
+function parseHasWon(value: unknown): boolean {
+  if (value === true || value === "TRUE" || value === "true") return true
+  if (value === false || value === "FALSE" || value === "false") return false
+  
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase().trim()
+    if (normalized === "si" || normalized === "sí") return true
+    if (normalized === "no") return false
+  }
+  
+  return false
+}
+
+/**
  * Transforms Excel data to ParticipantWithWon array
  * Used when Excel includes has_won information
+ * Only requires "padron" and "Ganador" columns, other fields can be empty
  */
 export function excelToParticipantsWithWon(
   excelData: Record<string, unknown>[]
 ): ParticipantWithWon[] {
-  const participants = excelToParticipants(excelData)
+  if (!excelData || excelData.length === 0) return []
   
-  // Check if has_won column exists
-  if (excelData.length === 0) return []
-  
+  // Get headers from first row and create mapping
   const headers = Object.keys(excelData[0])
-  const hasWonHeader = headers.find(h => {
-    const normalized = normalizeHeader(h)
-    return normalized === "haswon" || normalized === "ganador" || normalized === "ganado"
-  })
+  const headerMapping: Record<string, ParticipantBaseField> = {}
+  const ganadorHeader = findGanadorHeader(headers)
 
-  return participants.map((participant, index) => {
-    let hasWon = false
-    
-    if (hasWonHeader) {
-      const value = excelData[index][hasWonHeader]
-      hasWon = value === true || value === "true" || value === 1 || value === "1" || value === "si" || value === "sí"
+  for (const header of headers) {
+    const apiField = mapExcelHeader(header)
+    if (apiField) {
+      headerMapping[header] = apiField
     }
+  }
+
+  return excelData.map((row) => {
+    const participant: Partial<Participant> = {}
+
+    for (const [excelHeader, apiField] of Object.entries(headerMapping)) {
+      const value = row[excelHeader]
+
+      if (apiField === "census") {
+        // Handle census - can be number or string from Excel
+        const numValue = typeof value === "number" ? value : parseInt(String(value), 10)
+        participant[apiField] = isNaN(numValue) ? 0 : numValue
+      } else {
+        participant[apiField] = String(value ?? "").trim()
+      }
+    }
+
+    // Parse has_won from Ganador column
+    const hasWon = ganadorHeader ? parseHasWon(row[ganadorHeader]) : false
 
     return {
-      ...participant,
+      first_name: participant.first_name || "",
+      last_name: participant.last_name || "",
+      census: participant.census || 0,
+      career: participant.career || "",
+      phone_number: participant.phone_number || "",
       has_won: hasWon,
     }
-  })
+  }).filter((p) => 
+    // Filter out participants without valid census
+    p.census > 0
+  )
 }
 
 /**
@@ -317,5 +366,40 @@ export function validateParticipantData(
   return {
     valid: missingFields.length === 0,
     missingFields: missingFields.map((f) => API_TO_EXCEL_MAP[f] || f),
+  }
+}
+
+/**
+ * Validates that Excel data contains required fields for update page
+ * Only requires "padron" and "Ganador" columns
+ */
+export function validateParticipantDataForUpdate(
+  excelData: Record<string, unknown>[]
+): { valid: boolean; missingFields: string[] } {
+  if (!excelData || excelData.length === 0) {
+    return { valid: false, missingFields: ["No hay datos"] }
+  }
+
+  const headers = Object.keys(excelData[0])
+  const missingFields: string[] = []
+
+  // Check for census/padron column
+  const hasCensus = headers.some(h => mapExcelHeader(h) === "census")
+  if (!hasCensus) {
+    missingFields.push("Padrón")
+  }
+
+  // Check for ganador column
+  const hasGanador = headers.some(h => {
+    const normalized = normalizeHeader(h)
+    return normalized === "haswon" || normalized === "ganador" || normalized === "ganado"
+  })
+  if (!hasGanador) {
+    missingFields.push("Ganador")
+  }
+
+  return {
+    valid: missingFields.length === 0,
+    missingFields,
   }
 }

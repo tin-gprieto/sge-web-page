@@ -25,7 +25,7 @@ import {
 import { toast } from "sonner"
 import { RefreshCw, Loader2, CheckCircle2, XCircle, Plus } from "lucide-react"
 import { insertParticipants, getExpeditionList, createExpedition, type Expedition } from "@/lib/api"
-import { excelToParticipantsWithWon, validateParticipantData } from "@/lib/models"
+import { excelToParticipantsWithWon, validateParticipantDataForUpdate } from "@/lib/models"
 
 export default function UpdatePage() {
   const [expeditions, setExpeditions] = useState<Expedition[]>([])
@@ -93,8 +93,8 @@ export default function UpdatePage() {
   const handleSubmit = async () => {
     if (!isFormComplete || !excelData || !selectedExpedition) return
 
-    // Validate Excel data
-    const validation = validateParticipantData(excelData)
+    // Validate Excel data - only requires padron and Ganador columns
+    const validation = validateParticipantDataForUpdate(excelData)
     if (!validation.valid) {
       setResult({ 
         success: false, 
