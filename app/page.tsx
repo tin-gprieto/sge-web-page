@@ -1,6 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, RefreshCw, Shuffle, Search } from "lucide-react"
+import { ArrowRight, RefreshCw, Shuffle, Search, Calendar } from "lucide-react"
 
 export default function Home() {
   return (
@@ -12,6 +12,7 @@ export default function Home() {
           width={120}
           height={120}
           className="rounded-xl"
+          style={{ width: '120px', height: '120px' }}
           priority
         />
         <div className="flex flex-col gap-2">
@@ -24,7 +25,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="mt-12 grid w-full max-w-3xl gap-4 sm:grid-cols-3">
+      <div className="mt-12 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
 
         <Link
           href="/buscar"
@@ -79,6 +80,25 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-1 text-sm font-medium text-primary">
             Ir a Sortear
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </div>
+        </Link>
+
+        <Link
+          href="/planificar"
+          className="group flex flex-col gap-4 rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/40 hover:shadow-md"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+            <Calendar className="h-6 w-6 text-primary" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-foreground">Planificar</h2>
+            <p className="text-sm text-muted-foreground">
+              Consulta disponibilidad y planifica visitas de pasadas.
+            </p>
+          </div>
+          <div className="flex items-center gap-1 text-sm font-medium text-primary">
+            Ir a Planificar
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </div>
         </Link>

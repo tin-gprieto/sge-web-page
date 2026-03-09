@@ -375,6 +375,182 @@ Inserts or updates participants and expedition history after lottery execution.
 
 ---
 
+## Schedule Microservice
+
+These endpoints allow scheduling class visits by crossing people's availability with career schedules.
+
+---
+
+## 10. Get Careers
+
+### GET /careers
+
+### Description
+Returns list of all available careers.
+
+### Request
+No body.
+
+### Response
+```json
+{
+  "list": [
+    {"career_id": 0, "career": "Agrimensura"},
+    {"career_id": 1, "career": "Alimentos"},
+    {"career_id": 6, "career": "Informática"}
+  ]
+}
+```
+
+### Response Schema
+
+| Field     | Type   | Description     |
+|-----------|--------|-----------------|
+| list      | array  | List of careers |
+| career_id | number | Career ID       |
+| career    | string | Career name     |
+
+---
+
+## 11. Get Availability
+
+### GET /availability
+
+### Description
+Returns availability of people for scheduling.
+
+### Query Parameters
+
+| Parameter | Type   | Required | Description                              |
+|-----------|--------|----------|------------------------------------------|
+| build     | string | no       | Filter by building (`PC`, `LH`, `CU`)    |
+
+### Response
+```json
+{
+  "list": [
+    {"person": "Juan", "day": "Lunes", "starts_at": 10, "finishes_at": 13, "build": "PC"},
+    {"person": "María", "day": "Martes", "starts_at": 8, "finishes_at": 12, "build": "LH"}
+  ]
+}
+```
+
+### Response Schema
+
+| Field       | Type   | Description                     |
+|-------------|--------|---------------------------------|
+| list        | array  | List of availability entries    |
+| person      | string | Person name                     |
+| day         | string | Day of the week                 |
+| starts_at   | number | Start hour                      |
+| finishes_at | number | End hour                        |
+| build       | string | Building code (`PC`, `LH`, `CU`)|
+
+---
+
+## 12. Get Subjects
+
+### GET /subjects
+
+### Description
+Returns subjects for a specific career.
+
+### Query Parameters
+
+| Parameter | Type   | Required | Description |
+|-----------|--------|----------|-------------|
+| career_id | number | yes      | Career ID   |
+
+### Response
+```json
+{
+  "list": [
+    {"subject": "Análisis I", "curse_type": "teorica", "day": "Lunes", "starts_at": 8, "room": "407", "build": "PC"},
+    {"subject": "Física I", "curse_type": "practica", "day": "Martes", "starts_at": 10, "room": "209", "build": "LH"}
+  ]
+}
+```
+
+### Response Schema
+
+| Field      | Type   | Description                                              |
+|------------|--------|----------------------------------------------------------|
+| list       | array  | List of subjects                                         |
+| subject    | string | Subject name                                             |
+| curse_type | string | Class type (`teorica`, `practica`, `teorica-practica`)   |
+| day        | string | Day of the week                                          |
+| starts_at  | number | Start hour                                               |
+| room       | string | Room number                                              |
+| build      | string | Building code (`PC`, `LH`, `CU`)                         |
+
+---
+
+## 13. Calculate Schedule
+
+### POST /schedule
+
+### Description
+Crosses people's availability with career schedules to determine which classes can be covered and by whom.
+
+### Request Body
+```json
+{
+  "career_id": 6,
+  "course_type": ["teorica", "practica", "teorica-practica"],
+  "build": null,
+  "min_responsibles": 2
+}
+```
+
+### Request Fields
+
+| Field            | Type         | Required | Description                                                        |
+|------------------|--------------|----------|--------------------------------------------------------------------|
+| career_id        | number       | yes      | Career ID (obtain from `/careers`)                                 |
+| course_type      | array        | yes      | Class types to include: `teorica`, `practica`, `teorica-practica`  |
+| build            | string\|null | no       | Filter by building (`PC`, `LH`, `CU`) or `null` for all            |
+| min_responsibles | number       | no       | Minimum responsibles required to include a class (default: 2)      |
+
+### Response
+```json
+{
+  "list": [
+    {
+      "subject": "Análisis I",
+      "curse_type": "teorica",
+      "day": "Lunes",
+      "starts_at": 8,
+      "room": "407",
+      "build": "PC",
+      "responsibles": ["Juan", "María"]
+    }
+  ]
+}
+```
+
+### Response Schema
+
+| Field        | Type   | Description                                              |
+|--------------|--------|----------------------------------------------------------|
+| list         | array  | List of classes with assigned responsibles               |
+| subject      | string | Subject name                                             |
+| curse_type   | string | Class type (`teorica`, `practica`, `teorica-practica`)   |
+| day          | string | Day of the week                                          |
+| starts_at    | number | Start hour                                               |
+| room         | string | Room number                                              |
+| build        | string | Building code (`PC`, `LH`, `CU`)                         |
+| responsibles | array  | List of assigned responsible persons                     |
+
+### Assignment Logic
+
+A person is assigned as responsible for a class if:
+- They are available on the same day and building as the class
+- Their availability time matches the class start time (±1 hour)
+
+Only classes meeting the minimum responsibles requirement are included in the response.
+
+---
+
 ## Error Handling (All Endpoints)
 
 ### Standard Error Response
