@@ -44,6 +44,8 @@ interface WeeklyCalendarProps {
   selectedCourseType?: string
   /** Callback when course type filter changes */
   onCourseTypeChange?: (type: string) => void
+  /** Selected days to display (if not provided, all days are shown) */
+  selectedDays?: string[]
 }
 
 // Color mappings for events
@@ -99,7 +101,16 @@ export function WeeklyCalendar({
   courseTypes,
   selectedCourseType,
   onCourseTypeChange,
+  selectedDays,
 }: WeeklyCalendarProps) {
+  // Determine which days to display
+  const displayDays = useMemo(() => {
+    if (!selectedDays || selectedDays.length === 0) {
+      return DAYS_OF_WEEK
+    }
+    // Maintain original order
+    return DAYS_OF_WEEK.filter((day) => selectedDays.includes(day))
+  }, [selectedDays])
   // Combine all events if using groups
   const allEvents = useMemo(() => {
     let combinedEvents: CalendarEvent[]
@@ -145,11 +156,11 @@ export function WeeklyCalendar({
   // Flatten for legacy compatibility
   const eventsByDay = useMemo(() => {
     const grouped: Record<string, CalendarEvent[]> = {}
-    DAYS_OF_WEEK.forEach((day) => {
+    displayDays.forEach((day) => {
       grouped[day] = Object.values(eventsByDayAndHour[day] || {}).flat()
     })
     return grouped
-  }, [eventsByDayAndHour])
+  }, [eventsByDayAndHour, displayDays])
 
   // Calculate event positioning
   const getEventStyle = (event: CalendarEvent) => {
@@ -219,13 +230,16 @@ export function WeeklyCalendar({
         </div>
       )}
       <ScrollArea className="w-full">
-        <div className="min-w-[700px]">
+        <div style={{ minWidth: `${60 + displayDays.length * 120}px` }}>
           {/* Header row with days */}
-          <div className="grid grid-cols-[60px_repeat(5,1fr)] border-b border-border bg-muted/50">
+          <div 
+            className="grid border-b border-border bg-muted/50"
+            style={{ gridTemplateColumns: `60px repeat(${displayDays.length}, 1fr)` }}
+          >
             <div className="p-2 text-xs font-medium text-muted-foreground border-r border-border">
               Hora
             </div>
-            {DAYS_OF_WEEK.map((day) => (
+            {displayDays.map((day) => (
               <div
                 key={day}
                 className="p-2 text-center text-xs font-semibold text-foreground border-r border-border last:border-r-0"
@@ -236,7 +250,10 @@ export function WeeklyCalendar({
           </div>
 
           {/* Calendar body */}
-          <div className="grid grid-cols-[60px_repeat(5,1fr)]">
+          <div 
+            className="grid"
+            style={{ gridTemplateColumns: `60px repeat(${displayDays.length}, 1fr)` }}
+          >
             {/* Time column */}
             <div className="border-r border-border">
               {HOURS.map((hour) => (
@@ -251,7 +268,7 @@ export function WeeklyCalendar({
             </div>
 
             {/* Day columns */}
-            {DAYS_OF_WEEK.map((day) => (
+            {displayDays.map((day) => (
               <div
                 key={day}
                 className="relative border-r border-border last:border-r-0"

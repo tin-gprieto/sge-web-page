@@ -23,39 +23,44 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { RefreshCw, Loader2, CheckCircle2, XCircle, Plus } from "lucide-react"
-import { insertParticipants, getExpeditionList, createExpedition, type Expedition, type ParticipantWithWon } from "@/lib/api"
-import { excelToParticipantsWithWon, validateParticipantDataForUpdate } from "@/lib/models"
+import { RefreshCw, Loader2, CheckCircle2, XCircle, Plus, AlertTriangle } from "lucide-react"
+import { insertParticipants, getExpeditionList, getExpeditionHistorial, createExpedition, type Expedition, type ParticipantForInsert, type ExpeditionHistorialItem } from "@/lib/api"
+import { excelToParticipantsWithWon, validateParticipantDataForUpdate } from "@/lib/excel_integration"
 
 export default function UpdatePage() {
   const [expeditions, setExpeditions] = useState<Expedition[]>([])
+  const [historial, setHistorial] = useState<ExpeditionHistorialItem[]>([])
   const [expeditionId, setExpeditionId] = useState<string>("")
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear().toString())
   const [excelData, setExcelData] = useState<Record<string, unknown>[] | null>(null)
   const [fileName, setFileName] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [result, setResult] = useState<{ success: boolean; reason: string } | null>(null)
-  
+
   // Parsed participants list (same pattern as lotteryResult in sortout)
-  const [participantList, setParticipantList] = useState<ParticipantWithWon[] | null>(null)
-  
+  const [participantList, setParticipantList] = useState<ParticipantForInsert[] | null>(null)
+
   // New expedition dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newExpeditionName, setNewExpeditionName] = useState("")
   const [isCreatingExpedition, setIsCreatingExpedition] = useState(false)
 
-  // Fetch expeditions on mount
+  // Fetch expeditions and historial on mount
   useEffect(() => {
-    async function fetchExpeditions() {
+    async function fetchData() {
       try {
-        const response = await getExpeditionList()
-        setExpeditions(response.list)
+        const [expeditionsRes, historialRes] = await Promise.all([
+          getExpeditionList(),
+          getExpeditionHistorial()
+        ])
+        setExpeditions(expeditionsRes.list)
+        setHistorial(historialRes.list)
       } catch (err) {
-        console.error("Error fetching expeditions:", err)
+        console.error("Error fetching data:", err)
         toast.error("Error al cargar las expediciones")
       }
     }
-    fetchExpeditions()
+    fetchData()
   }, [])
 
   const handleExcelChange = useCallback(
@@ -63,7 +68,7 @@ export default function UpdatePage() {
       setExcelData(data)
       setFileName(name)
       setResult(null)
-      
+
       // Parse participants from Excel (same pattern as sortout stores lotteryResult)
       if (data) {
         const validation = validateParticipantDataForUpdate(data)
@@ -72,9 +77,9 @@ export default function UpdatePage() {
           setParticipantList(parsed)
         } else {
           setParticipantList(null)
-          setResult({ 
-            success: false, 
-            reason: `Faltan campos requeridos: ${validation.missingFields.join(", ")}` 
+          setResult({
+            success: false,
+            reason: `Faltan campos requeridos: ${validation.missingFields.join(", ")}`
           })
         }
       } else {
@@ -86,14 +91,20 @@ export default function UpdatePage() {
 
   const selectedExpedition = expeditions.find(e => e.id.toString() === expeditionId)
 
+  // Check if expedition/year combo already exists in historial
+  const expeditionYearExists = selectedExpedition && currentYear.trim()
+    ? historial.some(h => h.name === selectedExpedition.name && h.year === parseInt(currentYear, 10))
+    : false
+
   const isFormComplete =
     expeditionId !== "" &&
     currentYear.trim() !== "" &&
-    participantList !== null && participantList.length > 0
+    participantList !== null && participantList.length > 0 &&
+    !expeditionYearExists
 
   const handleCreateExpedition = async () => {
     if (!newExpeditionName.trim()) return
-    
+
     setIsCreatingExpedition(true)
     try {
       const newExpedition = await createExpedition(newExpeditionName.trim())
@@ -124,8 +135,10 @@ export default function UpdatePage() {
         list: participantList,
       })
 
-      setResult({ success: true, reason: `Guardado: ${response.inserted} insertados, ${response.repeated} repetidos de ${response.total} total` })
-      toast.success(`Guardado: ${response.inserted} insertados, ${response.repeated} repetidos de ${response.total} total`)
+      console.log("Insert response:", response)
+
+      setResult({ success: true, reason: `Guardado: ${response.inserted} insertados, ${response.repeated} repetidos, ${response.skipped} ignorados de ${response.total} total` })
+      toast.success(`Guardado: ${response.inserted} insertados, ${response.repeated} repetidos, ${response.skipped} ignorados de ${response.total} total`)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error de conexion"
       setResult({ success: false, reason: message })
@@ -232,6 +245,16 @@ export default function UpdatePage() {
             </div>
           </div>
 
+          {expeditionYearExists && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>
+                La expedición <strong>{selectedExpedition?.name}</strong> ya fue realizada en el año{" "}
+                <strong>{currentYear}</strong>. No se puede actualizar para evitar duplicados.
+              </span>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
             <Label className="text-foreground">Archivo Excel</Label>
             <ExcelUpload
@@ -243,11 +266,10 @@ export default function UpdatePage() {
 
           {result && (
             <div
-              className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${
-                result.success
+              className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${result.success
                   ? "border-primary/30 bg-primary/5 text-primary"
                   : "border-destructive/30 bg-destructive/5 text-destructive"
-              }`}
+                }`}
             >
               {result.success ? (
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
