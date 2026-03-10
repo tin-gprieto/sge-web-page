@@ -33,6 +33,7 @@ import {
   type CalendarEvent,
   type EventGroup,
 } from "@/components/weekly-calendar"
+import { DayFilter } from "@/components/day-filter"
 import {
   getCareers,
   getAvailability,
@@ -106,6 +107,7 @@ export default function PlanificarPage() {
   const [loadingAvailability, setLoadingAvailability] = useState(false)
   const [availabilityError, setAvailabilityError] = useState<string | null>(null)
   const [availabilityFilterBuild, setAvailabilityFilterBuild] = useState<string>("todos")
+  const [availabilityFilterDays, setAvailabilityFilterDays] = useState<string[]>([])
 
   // Planificacion de pasadas state
   const [selectedCareer, setSelectedCareer] = useState<string>("")
@@ -117,10 +119,12 @@ export default function PlanificarPage() {
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const [selectedPerson, setSelectedPerson] = useState<string>("todos")
   const [scheduleFilterCourseType, setScheduleFilterCourseType] = useState<string>("todos")
+  const [scheduleFilterDays, setScheduleFilterDays] = useState<string[]>([])
 
   // Cursos por carrera state
   const [cursosFilterCourseType, setCursosFilterCourseType] = useState<string>("todos")
   const [cursosFilterBuild, setCursosFilterBuild] = useState<string>("todos")
+  const [cursosFilterDays, setCursosFilterDays] = useState<string[]>([])
   const [cursosViewMode, setCursosViewMode] = useState<ViewMode>("lista")
   const [cursosCareer, setCursosCareer] = useState<string>("")
   const [subjectsData, setSubjectsData] = useState<Subject[]>([])
@@ -285,13 +289,22 @@ export default function PlanificarPage() {
     }
   }
 
-  // Filter subjects by build
+  // Filter subjects by build and days
   const filteredSubjectsData = useMemo(() => {
-    if (cursosFilterBuild === "todos" || !cursosFilterBuild) {
-      return subjectsData
+    let filtered = subjectsData
+    
+    // Filter by build
+    if (cursosFilterBuild !== "todos" && cursosFilterBuild) {
+      filtered = filtered.filter((subject) => subject.build === cursosFilterBuild)
     }
-    return subjectsData.filter((subject) => subject.build === cursosFilterBuild)
-  }, [subjectsData, cursosFilterBuild])
+    
+    // Filter by days
+    if (cursosFilterDays.length > 0) {
+      filtered = filtered.filter((subject) => cursosFilterDays.includes(subject.day))
+    }
+    
+    return filtered
+  }, [subjectsData, cursosFilterBuild, cursosFilterDays])
 
   // Convert subjects to event groups grouped by curse_type
   const subjectsEventGroups = useMemo(() => {
@@ -307,20 +320,28 @@ export default function PlanificarPage() {
     return Array.from(builds).sort()
   }, [availabilityData])
 
-  // Filter availability data by selected build
+  // Filter availability data by selected build and days
   const filteredAvailabilityData = useMemo(() => {
-    if (availabilityFilterBuild === "todos" || !availabilityFilterBuild) {
-      return availabilityData
-    }
     const filtered: AvailabilityByPerson = {}
     Object.entries(availabilityData).forEach(([person, entries]) => {
-      const filteredEntries = entries.filter((e) => e.build === availabilityFilterBuild)
+      let filteredEntries = entries
+      
+      // Filter by build
+      if (availabilityFilterBuild !== "todos" && availabilityFilterBuild) {
+        filteredEntries = filteredEntries.filter((e) => e.build === availabilityFilterBuild)
+      }
+      
+      // Filter by days
+      if (availabilityFilterDays.length > 0) {
+        filteredEntries = filteredEntries.filter((e) => availabilityFilterDays.includes(e.day))
+      }
+      
       if (filteredEntries.length > 0) {
         filtered[person] = filteredEntries
       }
     })
     return filtered
-  }, [availabilityData, availabilityFilterBuild])
+  }, [availabilityData, availabilityFilterBuild, availabilityFilterDays])
 
   // Count total availability entries
   const totalAvailabilityCount = useMemo(() => {
@@ -336,15 +357,24 @@ export default function PlanificarPage() {
     return availabilityToCalendarEvents(filteredAvailabilityData)
   }, [filteredAvailabilityData])
 
-  // Filter schedule data by selected person
+  // Filter schedule data by selected person and days
   const filteredScheduleData = useMemo(() => {
-    if (selectedPerson === "todos" || !selectedPerson) {
-      return scheduleData
+    let filtered = scheduleData
+    
+    // Filter by person
+    if (selectedPerson !== "todos" && selectedPerson) {
+      filtered = filtered.filter((course) =>
+        course.responsibles.includes(selectedPerson)
+      )
     }
-    return scheduleData.filter((course) =>
-      course.responsibles.includes(selectedPerson)
-    )
-  }, [scheduleData, selectedPerson])
+    
+    // Filter by days
+    if (scheduleFilterDays.length > 0) {
+      filtered = filtered.filter((course) => scheduleFilterDays.includes(course.day))
+    }
+    
+    return filtered
+  }, [scheduleData, selectedPerson, scheduleFilterDays])
 
   // Convert filtered schedule data to event groups (grouped by curse_type)
   const scheduleEventGroups = useMemo(() => {
@@ -452,13 +482,13 @@ export default function PlanificarPage() {
 
               {Object.keys(availabilityData).length > 0 && (
                 <>
-                  {/* Build filter and view mode toggle */}
+                  {/* Filters and view mode toggle */}
                   <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                       <div className="flex items-center gap-2">
-                        <Label className="text-sm text-muted-foreground">Edificio:</Label>
+                        <Label className="text-sm text-muted-foreground hidden sm:inline">Edificio:</Label>
                         <Select value={availabilityFilterBuild} onValueChange={setAvailabilityFilterBuild}>
-                          <SelectTrigger className="w-[120px]">
+                          <SelectTrigger className="w-[100px] sm:w-[120px]">
                             <SelectValue placeholder="Todos" />
                           </SelectTrigger>
                           <SelectContent>
@@ -471,7 +501,11 @@ export default function PlanificarPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <span className="text-sm text-muted-foreground">
+                      <DayFilter
+                        selectedDays={availabilityFilterDays}
+                        onSelectedDaysChange={setAvailabilityFilterDays}
+                      />
+                      <span className="text-xs sm:text-sm text-muted-foreground">
                         {filteredAvailabilityCount} de {totalAvailabilityCount} horarios
                       </span>
                     </div>
@@ -504,6 +538,7 @@ export default function PlanificarPage() {
                       events={availabilityCalendarEvents}
                       cellHeight={60}
                       className="max-h-[1400px]"
+                      selectedDays={availabilityFilterDays}
                     />
                   )}
                 </>
@@ -634,7 +669,7 @@ export default function PlanificarPage() {
                 <div className="space-y-6">
                   {/* Filters and View Mode Toggle */}
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-3 flex-1">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-2 flex-1">
                       <div className="flex-1 max-w-xs">
                         <Label className="text-foreground mb-2 block text-xs">Filtrar por Persona</Label>
                         <Select value={selectedPerson} onValueChange={setSelectedPerson}>
@@ -651,6 +686,10 @@ export default function PlanificarPage() {
                           </SelectContent>
                         </Select>
                       </div>
+                      <DayFilter
+                        selectedDays={scheduleFilterDays}
+                        onSelectedDaysChange={setScheduleFilterDays}
+                      />
                       {selectedPerson && selectedPerson !== "todos" && (
                         <Button
                           size="sm"
@@ -738,6 +777,7 @@ export default function PlanificarPage() {
                       courseTypes={scheduleCourseTypes}
                       selectedCourseType={scheduleFilterCourseType}
                       onCourseTypeChange={setScheduleFilterCourseType}
+                      selectedDays={scheduleFilterDays}
                     />
                   )}
                 </div>
