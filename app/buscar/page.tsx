@@ -28,10 +28,10 @@ import {
   getParticipantByName,
   getParticipantByCensus,
   getExpeditionParticipants,
-  getExpeditionList,
+  getExpeditionHistorial,
   type ParticipantResponse,
-  type ParticipantWithWon,
-  type Expedition,
+  type ExpeditionParticipant,
+  type ExpeditionHistorialItem,
 } from "@/lib/api"
 
 function ParticipantResult({ data }: { data: ParticipantResponse }) {
@@ -69,11 +69,11 @@ function ParticipantResult({ data }: { data: ParticipantResponse }) {
             <BookOpen className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-foreground">Historial de Expediciones</h3>
+            <h3 className="text-base font-semibold text-foreground">Historial de expediciónes</h3>
             <p className="text-sm text-muted-foreground">
               {data.historial.length === 0
                 ? "Sin expediciones registradas"
-                : `${data.historial.length} expedicion${data.historial.length !== 1 ? "es" : ""}`}
+                : `${data.historial.length} expedición${data.historial.length !== 1 ? "es" : ""}`}
             </p>
           </div>
         </div>
@@ -102,7 +102,7 @@ function ParticipantResult({ data }: { data: ParticipantResponse }) {
   )
 }
 
-function ExpeditionResult({ data, expedition, year }: { data: ParticipantWithWon[]; expedition: string; year: number }) {
+function ExpeditionResult({ data, expedition, year }: { data: ExpeditionParticipant[]; expedition: string; year: number }) {
   const winners = data.filter((p) => p.has_won)
   const losers = data.filter((p) => !p.has_won)
 
@@ -135,14 +135,13 @@ function ExpeditionResult({ data, expedition, year }: { data: ParticipantWithWon
                 <TableHead className="whitespace-nowrap text-xs font-semibold text-foreground">Apellido</TableHead>
                 <TableHead className="whitespace-nowrap text-xs font-semibold text-foreground">Padron</TableHead>
                 <TableHead className="whitespace-nowrap text-xs font-semibold text-foreground">Carrera</TableHead>
-                <TableHead className="whitespace-nowrap text-xs font-semibold text-foreground">Telefono</TableHead>
                 <TableHead className="whitespace-nowrap text-xs font-semibold text-foreground">Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                     No se encontraron participantes.
                   </TableCell>
                 </TableRow>
@@ -154,7 +153,6 @@ function ExpeditionResult({ data, expedition, year }: { data: ParticipantWithWon
                     <TableCell className="whitespace-nowrap text-xs text-foreground">{p.last_name}</TableCell>
                     <TableCell className="whitespace-nowrap text-xs text-foreground">{p.census}</TableCell>
                     <TableCell className="whitespace-nowrap text-xs text-foreground">{p.career}</TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-foreground">{p.phone_number}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       {p.has_won ? (
                         <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
@@ -178,8 +176,8 @@ function ExpeditionResult({ data, expedition, year }: { data: ParticipantWithWon
 }
 
 export default function BuscarPage() {
-  // Expedition list
-  const [expeditions, setExpeditions] = useState<Expedition[]>([])
+  // Expedition historial
+  const [historial, setHistorial] = useState<ExpeditionHistorialItem[]>([])
 
   // Participant search state
   const [searchMode, setSearchMode] = useState<"name" | "census">("name")
@@ -190,27 +188,33 @@ export default function BuscarPage() {
   const [participantResult, setParticipantResult] = useState<ParticipantResponse | null>(null)
   const [participantError, setParticipantError] = useState<string | null>(null)
 
-  // Expedition search state
-  const [expeditionId, setExpeditionId] = useState<string>("")
-  const [expeditionYear, setExpeditionYear] = useState(new Date().getFullYear().toString())
+  // Expedition search state - year first, then expedition
+  const [expeditionYear, setExpeditionYear] = useState<string>("")
+  const [expeditionName, setExpeditionName] = useState<string>("")
   const [isSearchingExpedition, setIsSearchingExpedition] = useState(false)
-  const [expeditionResult, setExpeditionResult] = useState<ParticipantWithWon[] | null>(null)
+  const [expeditionResult, setExpeditionResult] = useState<ExpeditionParticipant[] | null>(null)
   const [expeditionError, setExpeditionError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function fetchExpeditions() {
+    async function fetchHistorial() {
       try {
-        const response = await getExpeditionList()
-        setExpeditions(response.list)
+        const response = await getExpeditionHistorial()
+        setHistorial(response.list)
       } catch (err) {
-        console.error("Error fetching expeditions:", err)
-        toast.error("Error al cargar las expediciones")
+        console.error("Error fetching historial:", err)
+        toast.error("Error al cargar el historial de expediciones")
       }
     }
-    fetchExpeditions()
+    fetchHistorial()
   }, [])
 
-  const selectedExpedition = expeditions.find((e) => e.id.toString() === expeditionId)
+  // Get unique years from historial (sorted descending)
+  const availableYears = [...new Set(historial.map(h => h.year))].sort((a, b) => b - a)
+  
+  // Get expeditions available for selected year
+  const expeditionsForYear = expeditionYear 
+    ? [...new Set(historial.filter(h => h.year === parseInt(expeditionYear, 10)).map(h => h.name))].sort()
+    : []
 
   const handleSearchParticipant = async () => {
     setParticipantResult(null)
@@ -245,8 +249,8 @@ export default function BuscarPage() {
   }
 
   const handleSearchExpedition = async () => {
-    if (!selectedExpedition || !expeditionYear.trim()) {
-      setExpeditionError("Selecciona una expedicion y un ano.")
+    if (!expeditionName || !expeditionYear) {
+      setExpeditionError("Selecciona un año y una expedición.")
       return
     }
 
@@ -256,15 +260,15 @@ export default function BuscarPage() {
 
     try {
       const response = await getExpeditionParticipants(
-        selectedExpedition.name,
+        expeditionName,
         parseInt(expeditionYear, 10)
       )
       setExpeditionResult(response.list)
       if (response.list.length === 0) {
-        toast.info("No se encontraron participantes para esta expedicion y ano.")
+        toast.info("No se encontraron participantes para esta expedición y año.")
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Error al buscar expedicion"
+      const message = err instanceof Error ? err.message : "Error al buscar expedición"
       setExpeditionError(message)
       toast.error(message)
     } finally {
@@ -277,7 +281,7 @@ export default function BuscarPage() {
       ? firstName.trim() !== "" && lastName.trim() !== ""
       : census.trim() !== ""
 
-  const canSearchExpedition = expeditionId !== "" && expeditionYear.trim() !== ""
+  const canSearchExpedition = expeditionYear !== "" && expeditionName !== ""
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -290,7 +294,7 @@ export default function BuscarPage() {
             <div>
               <CardTitle className="text-xl text-foreground">Buscar</CardTitle>
               <CardDescription>
-                Busca participantes por nombre o padron, o consulta los datos de una expedicion.
+                Busca participantes por nombre o padron, o consulta los datos de una expedición.
               </CardDescription>
             </div>
           </div>
@@ -304,7 +308,7 @@ export default function BuscarPage() {
               </TabsTrigger>
               <TabsTrigger value="expedition" className="flex-1 gap-2">
                 <MapPin className="h-4 w-4" />
-                Expedicion
+                Expedición
               </TabsTrigger>
             </TabsList>
 
@@ -422,43 +426,50 @@ export default function BuscarPage() {
               <div className="flex flex-col gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-2">
-                    <Label className="text-foreground">Expedicion</Label>
+                    <Label className="text-foreground">Año</Label>
                     <Select
-                      value={expeditionId}
+                      value={expeditionYear}
                       onValueChange={(value) => {
-                        setExpeditionId(value)
+                        setExpeditionYear(value)
+                        setExpeditionName("") // Reset expedition when year changes
                         setExpeditionResult(null)
                         setExpeditionError(null)
                       }}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccionar expedicion" />
+                        <SelectValue placeholder="Seleccionar año" />
                       </SelectTrigger>
                       <SelectContent>
-                        {expeditions.map((exp) => (
-                          <SelectItem key={exp.id} value={exp.id.toString()}>
-                            {exp.name}
+                        {availableYears.map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="expedition-year" className="text-foreground">Ano</Label>
-                    <Input
-                      id="expedition-year"
-                      type="number"
-                      placeholder="Ej: 2026"
-                      value={expeditionYear}
-                      onChange={(e) => {
-                        setExpeditionYear(e.target.value)
+                    <Label className="text-foreground">Expedición</Label>
+                    <Select
+                      value={expeditionName}
+                      onValueChange={(value) => {
+                        setExpeditionName(value)
                         setExpeditionResult(null)
                         setExpeditionError(null)
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && canSearchExpedition) handleSearchExpedition()
-                      }}
-                    />
+                      disabled={!expeditionYear}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={expeditionYear ? "Seleccionar expedición" : "Primero selecciona un año"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {expeditionsForYear.map((name) => (
+                          <SelectItem key={name} value={name}>
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -475,7 +486,7 @@ export default function BuscarPage() {
                   ) : (
                     <>
                       <Search className="mr-2 h-4 w-4" />
-                      Buscar Expedicion
+                      Buscar Expedición
                     </>
                   )}
                 </Button>
@@ -490,10 +501,10 @@ export default function BuscarPage() {
               )}
 
               {/* Expedition Result */}
-              {expeditionResult && selectedExpedition && (
+              {expeditionResult && expeditionName && (
                 <ExpeditionResult
                   data={expeditionResult}
-                  expedition={selectedExpedition.name}
+                  expedition={expeditionName}
                   year={parseInt(expeditionYear, 10)}
                 />
               )}

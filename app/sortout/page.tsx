@@ -32,50 +32,53 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { Shuffle, Loader2, Download, XCircle, Plus, Database, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react"
-import { 
+import {
   rateParticipants,
-  executeLottery, 
+  executeLottery,
   insertParticipants,
-  getExpeditionList, 
-  createExpedition, 
+  getExpeditionList,
+  getExpeditionHistorial,
+  createExpedition,
   type ParticipantWithScore,
-  type ParticipantWithWon, 
-  type Expedition 
+  type ParticipantWithWon,
+  type Expedition,
+  type ExpeditionHistorialItem,
 } from "@/lib/api"
-import { 
-  excelToParticipants, 
-  downloadLotteryResults, 
+import {
+  excelToParticipants,
+  downloadLotteryResults,
   participantsToExcel,
   scoredParticipantsToExcel,
   validateParticipantData,
   downloadAsExcel,
-} from "@/lib/models"
+} from "@/lib/excel_integration"
 
 export default function SortoutPage() {
   // Expedition state
   const [expeditions, setExpeditions] = useState<Expedition[]>([])
+  const [historial, setHistorial] = useState<ExpeditionHistorialItem[]>([])
   const [expeditionId, setExpeditionId] = useState<string>("")
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear().toString())
   const [winnersCount, setWinnersCount] = useState("")
-  
+
   // Excel and data state
   const [excelData, setExcelData] = useState<Record<string, unknown>[] | null>(null)
   const [fileName, setFileName] = useState("")
-  
+
   // Rate state
   const [isRating, setIsRating] = useState(false)
   const [ratedParticipants, setRatedParticipants] = useState<ParticipantWithScore[] | null>(null)
-  
+
   // Lottery state
   const [isLotterying, setIsLotterying] = useState(false)
   const [lotteryResult, setLotteryResult] = useState<ParticipantWithWon[] | null>(null)
-  
+
   // Insert state
   const [isInserting, setIsInserting] = useState(false)
   const [insertComplete, setInsertComplete] = useState(false)
-  
+
   const [error, setError] = useState<string | null>(null)
-  
+
   // New expedition dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newExpeditionName, setNewExpeditionName] = useState("")
@@ -85,21 +88,30 @@ export default function SortoutPage() {
   const [ratedVisibleRows, setRatedVisibleRows] = useState(20)
   const [lotteryVisibleRows, setLotteryVisibleRows] = useState(20)
 
-  // Fetch expeditions on mount
+  // Fetch expeditions and historial on mount
   useEffect(() => {
-    async function fetchExpeditions() {
+    async function fetchData() {
       try {
-        const response = await getExpeditionList()
-        setExpeditions(response.list)
+        const [expeditionsRes, historialRes] = await Promise.all([
+          getExpeditionList(),
+          getExpeditionHistorial()
+        ])
+        setExpeditions(expeditionsRes.list)
+        setHistorial(historialRes.list)
       } catch (err) {
-        console.error("Error fetching expeditions:", err)
+        console.error("Error fetching data:", err)
         toast.error("Error al cargar las expediciones")
       }
     }
-    fetchExpeditions()
+    fetchData()
   }, [])
 
   const selectedExpedition = expeditions.find(e => e.id.toString() === expeditionId)
+
+  // Check if expedition/year combo already exists in historial
+  const expeditionYearExists = selectedExpedition && currentYear.trim()
+    ? historial.some(h => h.name === selectedExpedition.name && h.year === parseInt(currentYear, 10))
+    : false
 
   // Reset downstream data when expedition/year changes
   const resetData = useCallback(() => {
@@ -114,20 +126,22 @@ export default function SortoutPage() {
   // Auto-rate when we have all required data (expedition, year, excelData)
   useEffect(() => {
     async function autoRate() {
+      // Don't auto-rate if expedition/year combo already exists
+      if (expeditionYearExists) return
       if (!excelData || !selectedExpedition || !currentYear.trim() || ratedParticipants) return
-      
+
       const validation = validateParticipantData(excelData)
       if (!validation.valid) {
         setError(`Faltan campos requeridos: ${validation.missingFields.join(", ")}`)
         return
       }
-      
+
       const participants = excelToParticipants(excelData)
       if (participants.length === 0) {
         setError("No se encontraron participantes válidos en el Excel.")
         return
       }
-      
+
       setIsRating(true)
       setError(null)
       try {
@@ -147,9 +161,9 @@ export default function SortoutPage() {
         setIsRating(false)
       }
     }
-    
+
     autoRate()
-  }, [excelData, selectedExpedition, currentYear, ratedParticipants])
+  }, [excelData, selectedExpedition, currentYear, ratedParticipants, expeditionYearExists])
 
   const handleExcelChange = useCallback(
     (data: Record<string, unknown>[] | null, name: string) => {
@@ -165,7 +179,7 @@ export default function SortoutPage() {
 
   const handleCreateExpedition = async () => {
     if (!newExpeditionName.trim()) return
-    
+
     setIsCreatingExpedition(true)
     try {
       const newExpedition = await createExpedition(newExpeditionName.trim())
@@ -202,7 +216,7 @@ export default function SortoutPage() {
         if (a.has_won === b.has_won) return 0
         return a.has_won ? -1 : 1
       })
-      
+
       setLotteryResult(sorted)
       const winnersTotal = response.list.filter(p => p.has_won).length
       toast.success(`Sorteo completado: ${winnersTotal} ganadores de ${response.list.length} participantes`)
@@ -228,7 +242,7 @@ export default function SortoutPage() {
       })
 
       setInsertComplete(true)
-      toast.success(`Guardado: ${response.inserted} insertados, ${response.repeated} repetidos de ${response.total} total`)
+      toast.success(`Guardado: ${response.inserted} insertados, ${response.repeated} repetidos, ${response.skipped} ignorados de ${response.total} total`)
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al guardar datos"
       setError(message)
@@ -298,7 +312,7 @@ export default function SortoutPage() {
               <li><span className="font-medium text-foreground">x0,5</span>: Vino alguna expedición (diferente a la que se está sorteando)</li>
               <li><span className="font-medium text-foreground">x0,25</span>: Ya fue alguna vez a la expedición que se está sorteando</li>
             </ul>
-            <br />  
+            <br />
             <span className="space-y-1.5 text-sm font-semibold text-foreground">
               Si se arrobó a dos fiubenses en Instagram su puntaje actual se <b>duplicará</b>
             </span>
@@ -395,6 +409,17 @@ export default function SortoutPage() {
               />
             </div>
           </div>
+
+          {/* Warning: Expedition/Year already exists */}
+          {expeditionYearExists && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>
+                La expedición <strong>{selectedExpedition?.name}</strong> ya fue realizada en el año <strong>{currentYear}</strong>.
+                No es posible realizar otro sorteo para esta combinación.
+              </span>
+            </div>
+          )}
 
           {/* Step 2: Upload Excel */}
           <div className="flex flex-col gap-2">
@@ -514,7 +539,7 @@ export default function SortoutPage() {
                   </div>
                 )}
               </div>
-              
+
               {/* Lottery button - only show if lottery not yet executed */}
               {!lotteryResult && (
                 <Button
@@ -620,7 +645,7 @@ export default function SortoutPage() {
                   </div>
                 )}
               </div>
-              
+
               {/* Insert button */}
               {!insertComplete ? (
                 <Button

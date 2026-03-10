@@ -102,10 +102,10 @@ export default function PlanificarPage() {
   const [scheduleViewMode, setScheduleViewMode] = useState<ViewMode>("lista")
 
   // Disponibilidad state
-  const [selectedBuild, setSelectedBuild] = useState<string | null>(null)
   const [availabilityData, setAvailabilityData] = useState<AvailabilityByPerson>({})
   const [loadingAvailability, setLoadingAvailability] = useState(false)
   const [availabilityError, setAvailabilityError] = useState<string | null>(null)
+  const [availabilityFilterBuild, setAvailabilityFilterBuild] = useState<string>("todos")
 
   // Planificacion de pasadas state
   const [selectedCareer, setSelectedCareer] = useState<string>("")
@@ -120,6 +120,7 @@ export default function PlanificarPage() {
 
   // Cursos por carrera state
   const [cursosFilterCourseType, setCursosFilterCourseType] = useState<string>("todos")
+  const [cursosFilterBuild, setCursosFilterBuild] = useState<string>("todos")
   const [cursosViewMode, setCursosViewMode] = useState<ViewMode>("lista")
   const [cursosCareer, setCursosCareer] = useState<string>("")
   const [subjectsData, setSubjectsData] = useState<Subject[]>([])
@@ -142,14 +143,15 @@ export default function PlanificarPage() {
     fetchCareers()
   }, [])
 
-  // Fetch availability when build changes
+  // Fetch all availability (no build filter)
   const handleFetchAvailability = async () => {
     setLoadingAvailability(true)
     setAvailabilityError(null)
     setAvailabilityData({})
+    setAvailabilityFilterBuild("todos")
 
     try {
-      const response = await getAvailability(selectedBuild || undefined)
+      const response = await getAvailability()
       
       // Group availability by person
       const grouped: AvailabilityByPerson = {}
@@ -283,15 +285,56 @@ export default function PlanificarPage() {
     }
   }
 
+  // Filter subjects by build
+  const filteredSubjectsData = useMemo(() => {
+    if (cursosFilterBuild === "todos" || !cursosFilterBuild) {
+      return subjectsData
+    }
+    return subjectsData.filter((subject) => subject.build === cursosFilterBuild)
+  }, [subjectsData, cursosFilterBuild])
+
   // Convert subjects to event groups grouped by curse_type
   const subjectsEventGroups = useMemo(() => {
-    return subjectsToEventGroups(subjectsData)
-  }, [subjectsData])
+    return subjectsToEventGroups(filteredSubjectsData)
+  }, [filteredSubjectsData])
+
+  // Get unique builds from availability data
+  const availabilityBuilds = useMemo(() => {
+    const builds = new Set<string>()
+    Object.values(availabilityData).forEach((entries) => {
+      entries.forEach((entry) => builds.add(entry.build))
+    })
+    return Array.from(builds).sort()
+  }, [availabilityData])
+
+  // Filter availability data by selected build
+  const filteredAvailabilityData = useMemo(() => {
+    if (availabilityFilterBuild === "todos" || !availabilityFilterBuild) {
+      return availabilityData
+    }
+    const filtered: AvailabilityByPerson = {}
+    Object.entries(availabilityData).forEach(([person, entries]) => {
+      const filteredEntries = entries.filter((e) => e.build === availabilityFilterBuild)
+      if (filteredEntries.length > 0) {
+        filtered[person] = filteredEntries
+      }
+    })
+    return filtered
+  }, [availabilityData, availabilityFilterBuild])
+
+  // Count total availability entries
+  const totalAvailabilityCount = useMemo(() => {
+    return Object.values(availabilityData).reduce((acc, entries) => acc + entries.length, 0)
+  }, [availabilityData])
+
+  const filteredAvailabilityCount = useMemo(() => {
+    return Object.values(filteredAvailabilityData).reduce((acc, entries) => acc + entries.length, 0)
+  }, [filteredAvailabilityData])
 
   // Convert availability data to calendar events
   const availabilityCalendarEvents = useMemo(() => {
-    return availabilityToCalendarEvents(availabilityData)
-  }, [availabilityData])
+    return availabilityToCalendarEvents(filteredAvailabilityData)
+  }, [filteredAvailabilityData])
 
   // Filter schedule data by selected person
   const filteredScheduleData = useMemo(() => {
@@ -318,8 +361,15 @@ export default function PlanificarPage() {
   // Get unique course types from subjects data
   const subjectsCourseTypes = useMemo(() => {
     const types = new Set<string>()
-    subjectsData.forEach((subject) => types.add(subject.curse_type))
+    filteredSubjectsData.forEach((subject) => types.add(subject.curse_type))
     return Array.from(types)
+  }, [filteredSubjectsData])
+
+  // Get unique builds from subjects data
+  const subjectsBuilds = useMemo(() => {
+    const builds = new Set<string>()
+    subjectsData.forEach((subject) => builds.add(subject.build))
+    return Array.from(builds).sort()
   }, [subjectsData])
 
   // Copy personal schedule to clipboard
@@ -381,42 +431,16 @@ export default function PlanificarPage() {
             {/* Disponibilidad Tab */}
             <TabsContent value="disponibilidad" className="flex flex-col gap-6">
               <div className="rounded-lg border border-border bg-card p-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-2 flex-1">
-                    <div className="flex-1 max-w-xs">
-                      <Label className="text-foreground mb-2 block">Edificio</Label>
-                      <Select value={selectedBuild || "all"} onValueChange={(v) => setSelectedBuild(v === "all" ? null : v)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Todos los edificios" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          {BUILDS.map((build) => (
-                            <SelectItem key={build} value={build}>
-                              {build}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={handleFetchAvailability} disabled={loadingAvailability}>
-                      {loadingAvailability ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Cargando...
-                        </>
-                      ) : (
-                        "Cargar Disponibilidad"
-                      )}
-                    </Button>
-                  </div>
-                  {Object.keys(availabilityData).length > 0 && (
-                    <ViewModeToggle
-                      value={availabilityViewMode}
-                      onChange={setAvailabilityViewMode}
-                    />
+                <Button onClick={handleFetchAvailability} disabled={loadingAvailability} className="w-full">
+                  {loadingAvailability ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Cargando...
+                    </>
+                  ) : (
+                    "Cargar Disponibilidad"
                   )}
-                </div>
+                </Button>
               </div>
 
               {availabilityError && (
@@ -428,9 +452,35 @@ export default function PlanificarPage() {
 
               {Object.keys(availabilityData).length > 0 && (
                 <>
+                  {/* Build filter and view mode toggle */}
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm text-muted-foreground">Edificio:</Label>
+                        <Select value={availabilityFilterBuild} onValueChange={setAvailabilityFilterBuild}>
+                          <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Todos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos</SelectItem>
+                            {availabilityBuilds.map((build) => (
+                              <SelectItem key={build} value={build}>
+                                {build}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {filteredAvailabilityCount} de {totalAvailabilityCount} horarios
+                      </span>
+                    </div>
+                    <ViewModeToggle value={availabilityViewMode} onChange={setAvailabilityViewMode} />
+                  </div>
+
                   {availabilityViewMode === "lista" ? (
                     <div className="space-y-4">
-                      {Object.entries(availabilityData).map(([person, entries]) => (
+                      {Object.entries(filteredAvailabilityData).map(([person, entries]) => (
                         <div key={person} className="rounded-lg border border-border p-4">
                           <h3 className="mb-3 font-semibold text-foreground">{person}</h3>
                           <div className="grid gap-2">
@@ -467,7 +517,7 @@ export default function PlanificarPage() {
 
               {!loadingAvailability && Object.keys(availabilityData).length === 0 && !availabilityError && (
                 <div className="rounded-lg border border-border/50 bg-muted/30 p-8 text-center text-muted-foreground">
-                  <p>Selecciona un edificio y carga la disponibilidad</p>
+                  <p>Carga la disponibilidad para ver los horarios</p>
                 </div>
               )}
             </TabsContent>
@@ -725,7 +775,7 @@ export default function PlanificarPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={handleFetchSubjects} disabled={loadingSubjects || !cursosCareer}>
+                    <Button onClick={handleFetchSubjects} disabled={loadingSubjects || !cursosCareer} className="w-full sm:w-auto sm:flex-1">
                       {loadingSubjects ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -736,9 +786,6 @@ export default function PlanificarPage() {
                       )}
                     </Button>
                   </div>
-                  {subjectsData.length > 0 && (
-                    <ViewModeToggle value={cursosViewMode} onChange={setCursosViewMode} />
-                  )}
                 </div>
               </div>
 
@@ -751,11 +798,37 @@ export default function PlanificarPage() {
 
               {subjectsData.length > 0 && (
                 <>
+                  {/* Build filter and view mode toggle */}
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm text-muted-foreground">Edificio:</Label>
+                        <Select value={cursosFilterBuild} onValueChange={setCursosFilterBuild}>
+                          <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Todos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos</SelectItem>
+                            {subjectsBuilds.map((build) => (
+                              <SelectItem key={build} value={build}>
+                                {build}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {filteredSubjectsData.length} de {subjectsData.length} cursos
+                      </span>
+                    </div>
+                    <ViewModeToggle value={cursosViewMode} onChange={setCursosViewMode} />
+                  </div>
+
                   {cursosViewMode === "lista" ? (
                     <div className="rounded-lg border border-border bg-card overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
                         <span className="text-sm font-medium text-foreground">
-                          {subjectsData.length} cursos encontrados
+                          {filteredSubjectsData.length} cursos encontrados
                         </span>
                       </div>
                       <ScrollArea className="w-full">
@@ -771,7 +844,7 @@ export default function PlanificarPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {subjectsData.map((subject, idx) => (
+                            {filteredSubjectsData.map((subject, idx) => (
                               <TableRow key={idx}>
                                 <TableCell className="text-xs text-foreground whitespace-nowrap">
                                   {subject.subject}
