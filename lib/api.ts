@@ -414,6 +414,28 @@ export async function getExpeditionHistorial(): Promise<ExpeditionHistorialRespo
   })
 }
 
+// All participants response
+export interface AllParticipant {
+  first_name: string
+  last_name: string
+  census: number | null
+  career: string
+}
+
+export interface AllParticipantsResponse {
+  list: AllParticipant[]
+}
+
+/**
+ * Get all participants
+ * GET /participants
+ */
+export async function getAllParticipants(): Promise<AllParticipantsResponse> {
+  return apiRequest<AllParticipantsResponse>("/participants", {
+    method: "GET",
+  })
+}
+
 /**
  * Create a new expedition
  * POST /expedition
