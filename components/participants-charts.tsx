@@ -12,7 +12,6 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
-  Legend,
 } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -57,7 +56,7 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
     let withoutCareer = 0
 
     participants.forEach((p) => {
-      if (!p.career || p.career.trim() === "") {
+      if (!p.career || p.career.trim() === "" || p.career === "Sin carrera") {
         withoutCareer++
       } else {
         careerCounts[p.career] = (careerCounts[p.career] || 0) + 1
@@ -202,46 +201,60 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
           </CardDescription>
         </CardHeader>
         <CardContent className="px-2 sm:px-6">
-          <ChartContainer config={careerChartConfig} className="mx-auto aspect-square h-48 sm:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value, name) => (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{name}:</span>
-                          <span>{value}</span>
-                        </div>
-                      )}
-                    />
-                  }
-                />
-                <Pie
-                  data={careerData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={typeof window !== "undefined" && window.innerWidth < 640 ? 60 : 80}
-                  label={({ name, percent }) =>
-                    `${name.length > 8 ? name.substring(0, 8) + "..." : name} (${(percent * 100).toFixed(0)}%)`
-                  }
-                  labelLine={true}
-                >
-                  {careerData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Legend
-                  layout="horizontal"
-                  verticalAlign="bottom"
-                  align="center"
-                  wrapperStyle={{ fontSize: "9px", paddingTop: "8px" }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+          <div className="flex items-center gap-2">
+            {/* Legend on the left */}
+            <div className="flex flex-col gap-1 shrink-0 max-h-48 sm:max-h-64 overflow-y-auto pr-1">
+              {careerData.map((entry, index) => (
+                <div key={index} className="flex items-center gap-1.5">
+                  <div
+                    className="h-2.5 w-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: entry.fill }}
+                  />
+                  <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                    {entry.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {/* Pie chart on the right */}
+            <ChartContainer config={careerChartConfig} className="flex-1 aspect-square h-48 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value, name) => {
+                          const percent = totalWithCareer > 0
+                            ? ((Number(value) / totalWithCareer) * 100).toFixed(1)
+                            : "0"
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{name}:</span>
+                              <span>{value} ({percent}%)</span>
+                            </div>
+                          )
+                        }}
+                      />
+                    }
+                  />
+                  <Pie
+                    data={careerData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={typeof window !== "undefined" && window.innerWidth < 640 ? 70 : 95}
+                    label={false}
+                    labelLine={false}
+                  >
+                    {careerData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </div>
         </CardContent>
       </Card>
 
