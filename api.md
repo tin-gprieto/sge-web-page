@@ -244,7 +244,7 @@ Returns participant data and expedition history using census number.
 ### GET /participants
 
 ### Description
-Returns the complete list of all participants registered in the system with their name and career.
+Returns the complete list of all participants registered in the system with their name, census and career.
 
 ### Request
 No body.
@@ -256,6 +256,7 @@ No body.
     {
       "first_name": "string",
       "last_name": "string",
+      "census": 108765,
       "career": "string"
     }
   ]
@@ -264,12 +265,13 @@ No body.
 
 ### Response Schema
 
-| Field      | Type   | Description               |
-|------------|--------|---------------------------|
-| list       | array  | List of participants      |
-| first_name | string | Participant first name    |
-| last_name  | string | Participant last name     |
-| career     | string | Career name               |
+| Field      | Type   | Description                        |
+|------------|--------|------------------------------------|
+| list       | array  | List of participants               |
+| first_name | string | Participant first name             |
+| last_name  | string | Participant last name              |
+| census     | int?   | Census number (may be null)        |
+| career     | string | Career name                        |
 
 ---
 
