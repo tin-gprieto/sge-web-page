@@ -10,7 +10,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  ResponsiveContainer,
   Tooltip,
 } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -218,41 +217,39 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
             </div>
             {/* Pie chart on the right */}
             <ChartContainer config={careerChartConfig} className="flex-1 aspect-square h-48 sm:h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        formatter={(value, name) => {
-                          const percent = totalWithCareer > 0
-                            ? ((Number(value) / totalWithCareer) * 100).toFixed(1)
-                            : "0"
-                          return (
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{name}:</span>
-                              <span>{value} ({percent}%)</span>
-                            </div>
-                          )
-                        }}
-                      />
-                    }
-                  />
-                  <Pie
-                    data={careerData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={typeof window !== "undefined" && window.innerWidth < 640 ? 70 : 95}
-                    label={false}
-                    labelLine={false}
-                  >
-                    {careerData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
+              <PieChart>
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value, name) => {
+                        const percent = totalWithCareer > 0
+                          ? ((Number(value) / totalWithCareer) * 100).toFixed(1)
+                          : "0"
+                        return (
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{name}:</span>
+                            <span>{value} ({percent}%)</span>
+                          </div>
+                        )
+                      }}
+                    />
+                  }
+                />
+                <Pie
+                  data={careerData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={typeof window !== "undefined" && window.innerWidth < 640 ? 70 : 95}
+                  label={false}
+                  labelLine={false}
+                >
+                  {careerData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+              </PieChart>
             </ChartContainer>
           </div>
         </CardContent>
@@ -268,35 +265,33 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
         </CardHeader>
         <CardContent className="px-2 sm:px-6">
           <ChartContainer config={censusChartConfig} className="h-48 sm:h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={censusData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis
-                  dataKey="range"
-                  tick={{ fontSize: 9 }}
-                  tickLine={false}
-                  axisLine={false}
-                  interval={0}
-                  angle={-45}
-                  textAnchor="end"
-                  height={40}
-                />
-                <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={30} />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Participantes:</span>
-                          <span>{value}</span>
-                        </div>
-                      )}
-                    />
-                  }
-                />
-                <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <BarChart data={censusData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="range"
+                tick={{ fontSize: 9 }}
+                tickLine={false}
+                axisLine={false}
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={40}
+              />
+              <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={30} />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value) => (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Participantes:</span>
+                        <span>{value}</span>
+                      </div>
+                    )}
+                  />
+                }
+              />
+              <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} />
+            </BarChart>
           </ChartContainer>
         </CardContent>
       </Card>
