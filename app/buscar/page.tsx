@@ -29,10 +29,13 @@ import {
   getParticipantByCensus,
   getExpeditionParticipants,
   getExpeditionHistorial,
+  getAllParticipants,
   type ParticipantResponse,
   type ExpeditionParticipant,
   type ExpeditionHistorialItem,
+  type AllParticipant,
 } from "@/lib/api"
+import { ParticipantsCharts } from "@/components/participants-charts"
 
 function ParticipantResult({ data }: { data: ParticipantResponse }) {
   return (
@@ -176,6 +179,10 @@ function ExpeditionResult({ data, expedition, year }: { data: ExpeditionParticip
 }
 
 export default function BuscarPage() {
+  // All participants for charts
+  const [allParticipants, setAllParticipants] = useState<AllParticipant[]>([])
+  const [isLoadingParticipants, setIsLoadingParticipants] = useState(true)
+
   // Expedition historial
   const [historial, setHistorial] = useState<ExpeditionHistorialItem[]>([])
 
@@ -206,6 +213,23 @@ export default function BuscarPage() {
       }
     }
     fetchHistorial()
+  }, [])
+
+  // Fetch all participants for charts
+  useEffect(() => {
+    async function fetchAllParticipants() {
+      try {
+        setIsLoadingParticipants(true)
+        const response = await getAllParticipants()
+        setAllParticipants(response.list)
+      } catch (err) {
+        console.error("Error fetching participants:", err)
+        toast.error("Error al cargar los participantes para los graficos")
+      } finally {
+        setIsLoadingParticipants(false)
+      }
+    }
+    fetchAllParticipants()
   }, [])
 
   // Get unique years from historial (sorted descending)
@@ -285,6 +309,14 @@ export default function BuscarPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
+      {/* Charts Section */}
+      <div className="mb-6">
+        <ParticipantsCharts
+          participants={allParticipants}
+          isLoading={isLoadingParticipants}
+        />
+      </div>
+
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
