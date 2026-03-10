@@ -144,22 +144,22 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Participantes por Carrera</CardTitle>
-            <CardDescription>Cargando datos...</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm sm:text-base">Participantes por Carrera</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Cargando datos...</CardDescription>
           </CardHeader>
-          <CardContent className="flex h-64 items-center justify-center">
+          <CardContent className="flex h-48 sm:h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Distribucion por Padron</CardTitle>
-            <CardDescription>Cargando datos...</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm sm:text-base">Distribucion por Padron</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Cargando datos...</CardDescription>
           </CardHeader>
-          <CardContent className="flex h-64 items-center justify-center">
+          <CardContent className="flex h-48 sm:h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </CardContent>
         </Card>
@@ -169,17 +169,17 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
 
   if (participants.length === 0) {
     return (
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Participantes por Carrera</CardTitle>
-            <CardDescription>No hay datos disponibles</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm sm:text-base">Participantes por Carrera</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">No hay datos disponibles</CardDescription>
           </CardHeader>
         </Card>
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Distribucion por Padron</CardTitle>
-            <CardDescription>No hay datos disponibles</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm sm:text-base">Distribucion por Padron</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">No hay datos disponibles</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -187,12 +187,12 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
       {/* Career Pie Chart */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Participantes por Carrera</CardTitle>
-          <CardDescription>
+        <CardHeader className="pb-2 px-3 sm:px-6">
+          <CardTitle className="text-sm sm:text-base">Participantes por Carrera</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">
             Total: {totalWithCareer} participantes
             {participantsWithoutCareer > 0 && (
               <span className="ml-1 text-muted-foreground">
@@ -201,8 +201,8 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
             )}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={careerChartConfig} className="mx-auto aspect-square h-64">
+        <CardContent className="px-2 sm:px-6">
+          <ChartContainer config={careerChartConfig} className="mx-auto aspect-square h-48 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <ChartTooltip
@@ -223,9 +223,9 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={80}
+                  outerRadius={typeof window !== "undefined" && window.innerWidth < 640 ? 60 : 80}
                   label={({ name, percent }) =>
-                    `${name.length > 12 ? name.substring(0, 12) + "..." : name} (${(percent * 100).toFixed(0)}%)`
+                    `${name.length > 8 ? name.substring(0, 8) + "..." : name} (${(percent * 100).toFixed(0)}%)`
                   }
                   labelLine={true}
                 >
@@ -237,7 +237,7 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
                   layout="horizontal"
                   verticalAlign="bottom"
                   align="center"
-                  wrapperStyle={{ fontSize: "10px", paddingTop: "10px" }}
+                  wrapperStyle={{ fontSize: "9px", paddingTop: "8px" }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -247,24 +247,28 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
 
       {/* Census Bar Chart */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Distribucion por Padron</CardTitle>
-          <CardDescription>
+        <CardHeader className="pb-2 px-3 sm:px-6">
+          <CardTitle className="text-sm sm:text-base">Distribucion por Padron</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">
             Agrupado por miles (ej: 105k = 105000-105999)
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={censusChartConfig} className="h-64 w-full">
+        <CardContent className="px-2 sm:px-6">
+          <ChartContainer config={censusChartConfig} className="h-48 sm:h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={censusData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <BarChart data={censusData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="range"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 9 }}
                   tickLine={false}
                   axisLine={false}
+                  interval={0}
+                  angle={-45}
+                  textAnchor="end"
+                  height={40}
                 />
-                <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} width={30} />
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
