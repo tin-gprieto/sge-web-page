@@ -65,24 +65,24 @@ function ParticipantResult({ data }: { data: ParticipantResponse }) {
         </div>
       </div>
 
-      {/* Expedition History */}
+      {/* Won Expeditions */}
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
             <BookOpen className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-foreground">Historial de expediciónes</h3>
+            <h3 className="text-base font-semibold text-foreground">Expediciones donde fue sorteado</h3>
             <p className="text-sm text-muted-foreground">
-              {data.historial.length === 0
-                ? "Sin expediciones registradas"
-                : `${data.historial.length} expedición${data.historial.length !== 1 ? "es" : ""}`}
+              {data.historial.filter(h => h.has_won).length === 0
+                ? "No fue sorteado en ninguna expedición"
+                : `${data.historial.filter(h => h.has_won).length} expedición${data.historial.filter(h => h.has_won).length !== 1 ? "es" : ""}`}
             </p>
           </div>
         </div>
-        {data.historial.length > 0 ? (
+        {data.historial.filter(h => h.has_won).length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {data.historial.map((entry, i) => (
+            {data.historial.filter(h => h.has_won).map((entry, i) => (
               <div
                 key={i}
                 className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2"
@@ -97,10 +97,49 @@ function ParticipantResult({ data }: { data: ParticipantResponse }) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Este participante no tiene expediciones registradas.
+            Este participante no fue sorteado en ninguna expedición registrada.
           </p>
         )}
       </div>
+
+      {/* Lost Expeditions */}
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+            <BookOpen className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-foreground">Expediciones donde no fue sorteado</h3>
+            <p className="text-sm text-muted-foreground">
+              {data.historial.filter(h => !h.has_won).length === 0
+                ? "No fue sorteado en ninguna expedición"
+                : `${data.historial.filter(h => !h.has_won).length} expedición${data.historial.filter(h => !h.has_won).length !== 1 ? "es" : ""}`}
+            </p>
+          </div>
+        </div>
+        {data.historial.filter(h => !h.has_won).length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {data.historial.filter(h => !h.has_won).map((entry, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2"
+              >
+                <MapPin className="h-3.5 w-3.5 text-primary" />
+                <span className="text-sm font-medium text-foreground">{entry.expedition}</span>
+                <Badge variant="secondary" className="text-xs">
+                  {entry.year}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Este participante no fue sorteado en ninguna expedición registrada.
+          </p>
+        )}
+      </div>
+
+
     </div>
   )
 }
@@ -234,9 +273,9 @@ export default function BuscarPage() {
 
   // Get unique years from historial (sorted descending)
   const availableYears = [...new Set(historial.map(h => h.year))].sort((a, b) => b - a)
-  
+
   // Get expeditions available for selected year
-  const expeditionsForYear = expeditionYear 
+  const expeditionsForYear = expeditionYear
     ? [...new Set(historial.filter(h => h.year === parseInt(expeditionYear, 10)).map(h => h.name))].sort()
     : []
 

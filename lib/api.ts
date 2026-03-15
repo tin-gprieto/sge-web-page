@@ -81,6 +81,7 @@ export interface ExpeditionParticipant {
 export interface ExpeditionHistory {
   expedition: string
   year: number
+  has_won: boolean
 }
 
 export interface ParticipantResponse {
