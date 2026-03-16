@@ -55,7 +55,7 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
     let withoutCareer = 0
 
     participants.forEach((p) => {
-      if (!p.career || p.career.trim() === "" || p.career === "Sin carrera") {
+      if (!p.career || p.career.trim() === "" || p.career.trim().toLowerCase() === "sin carrera") {
         withoutCareer++
       } else {
         careerCounts[p.career] = (careerCounts[p.career] || 0) + 1
@@ -191,10 +191,10 @@ export function ParticipantsCharts({ participants, isLoading }: ParticipantsChar
         <CardHeader className="pb-2 px-3 sm:px-6">
           <CardTitle className="text-sm sm:text-base">Participantes por Carrera</CardTitle>
           <CardDescription className="text-xs sm:text-sm">
-            Total: {totalWithCareer} participantes
+            Total con carrera: {totalWithCareer} participantes
             {participantsWithoutCareer > 0 && (
               <span className="ml-1 text-muted-foreground">
-                ({participantsWithoutCareer} sin carrera)
+                ({participantsWithoutCareer} excluidos sin carrera)
               </span>
             )}
           </CardDescription>
