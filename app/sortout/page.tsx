@@ -310,7 +310,7 @@ export default function SortoutPage() {
               <li><span className="font-medium text-foreground">x1,5</span>: Si se está en la base de datos pero no fue a ninguna expedición</li>
               <li><span className="font-medium text-foreground">x1</span>: Nunca vino a ninguna expedición (no se encuentra en la base de datos)</li>
               <li><span className="font-medium text-foreground">x0,5</span>: Vino alguna expedición (diferente a la que se está sorteando)</li>
-              <li><span className="font-medium text-foreground">x0,25</span>: Ya fue alguna vez a la expedición que se está sorteando</li>
+              <li><span className="font-medium text-foreground">x0</span>: Ya fue alguna vez a la expedición que se está sorteando (Será excluido)</li>
             </ul>
             <br />
             <span className="space-y-1.5 text-sm font-semibold text-foreground">
