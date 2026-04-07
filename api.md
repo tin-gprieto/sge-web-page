@@ -198,7 +198,8 @@ Returns participant data and expedition history.
   "historial": [
     {
       "expedition": "string",
-      "year": 2026
+      "year": 2026,
+      "has_won": true
     }
   ]
 }
@@ -231,7 +232,8 @@ Returns participant data and expedition history using census number.
   "historial": [
     {
       "expedition": "string",
-      "year": 2026
+      "year": 2026,
+      "has_won": true
     }
   ]
 }
