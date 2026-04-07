@@ -3,9 +3,9 @@
 import { Calendar } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
-import { DisponibilidadTab } from "../../components/disponibilidad-tab"
-import { PlanificacionTab } from "../../components/planificacion-tab"
-import { CursosTab } from "../../components/cursos-tab"
+import { DisponibilidadTab } from "../../components/planificar/disponibilidad-tab"
+import { PlanificacionTab } from "../../components/planificar/planificacion-tab"
+import { CursosTab } from "../../components/planificar/cursos-tab"
 
 export default function PlanificarPage() {
   return (
