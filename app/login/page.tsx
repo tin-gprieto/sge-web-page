@@ -43,7 +43,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm border-border">
         <CardHeader className="flex flex-col items-center gap-4 pb-2">
           <Image
-            src="/logo.png"
+            src="/logo.svg"
             alt="SGE Logo"
             width={60}
             height={60}
@@ -52,7 +52,7 @@ export default function LoginPage() {
             priority
           />
           <div className="flex flex-col items-center gap-1">
-            <h1 className="text-xl font-semibold text-foreground">S.G.E.</h1>
+            <h1 className="text-xl font-bold text-foreground">S.G.E.</h1>
             <p className="text-sm text-muted-foreground">
               Ingresa la contraseña para acceder
             </p>
