@@ -2,12 +2,18 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
-import { Calendar, Loader2, XCircle, Copy, List, CalendarDays } from "lucide-react"
+import { Calendar, Loader2, XCircle, Copy, List, CalendarDays, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Select,
   SelectContent,
@@ -108,7 +114,7 @@ export default function PlanificarPage() {
   const [availabilityFilterDays, setAvailabilityFilterDays] = useState<string[]>([])
 
   // Planificacion de pasadas state
-  const [selectedCareer, setSelectedCareer] = useState<string>("")
+  const [selectedCareers, setSelectedCareers] = useState<string[]>([])
   const [selectedCourseTypes, setSelectedCourseTypes] = useState<string[]>(["teorica", "practica"])
   const [selectedBuilds, setSelectedBuilds] = useState<string[]>([])
   const [minResponsibles, setMinResponsibles] = useState<string>("2")
@@ -124,7 +130,7 @@ export default function PlanificarPage() {
   const [cursosFilterBuild, setCursosFilterBuild] = useState<string>("todos")
   const [cursosFilterDays, setCursosFilterDays] = useState<string[]>([])
   const [cursosViewMode, setCursosViewMode] = useState<ViewMode>("lista")
-  const [cursosCareer, setCursosCareer] = useState<string>("")
+  const [cursosCareers, setCursosCareers] = useState<string[]>([])
   const [subjectsData, setSubjectsData] = useState<Subject[]>([])
   const [loadingSubjects, setLoadingSubjects] = useState(false)
   const [subjectsError, setSubjectsError] = useState<string | null>(null)
@@ -179,8 +185,8 @@ export default function PlanificarPage() {
   }
 
   const handleFetchSchedule = async () => {
-    if (!selectedCareer) {
-      toast.error("Selecciona una carrera")
+    if (selectedCareers.length === 0) {
+      toast.error("Selecciona al menos una carrera")
       return
     }
 
@@ -189,20 +195,43 @@ export default function PlanificarPage() {
     setScheduleData([])
 
     try {
-      const careerId = parseInt(selectedCareer, 10)
-      const response = await calculateSchedule({
-        career_id: careerId,
-        course_type: selectedCourseTypes,
-        build: selectedBuilds.length > 0 ? selectedBuilds[0] : null,
-        min_responsibles: parseInt(minResponsibles, 10) || 2,
+      const responses = await Promise.all(
+        selectedCareers.map((careerId) =>
+          calculateSchedule({
+            career_id: parseInt(careerId, 10),
+            course_type: selectedCourseTypes,
+            build: selectedBuilds.length > 0 ? selectedBuilds[0] : null,
+            min_responsibles: parseInt(minResponsibles, 10) || 2,
+          })
+        )
+      )
+
+      const merged = responses.flatMap((response) => response.list)
+
+      // Avoid duplicated rows when careers share classes.
+      const uniqueByKey = new Map<string, ScheduledClass>()
+      merged.forEach((course) => {
+        const key = [
+          course.subject,
+          course.curse_type,
+          course.day,
+          course.starts_at,
+          course.room,
+          course.build,
+          [...course.responsibles].sort().join("|"),
+        ].join("::")
+        if (!uniqueByKey.has(key)) {
+          uniqueByKey.set(key, course)
+        }
       })
 
-      setScheduleData(response.list)
+      const mergedSchedule = Array.from(uniqueByKey.values())
+      setScheduleData(mergedSchedule)
 
-      if (response.list.length === 0) {
+      if (mergedSchedule.length === 0) {
         toast.info("No se encontraron cursos que cumplan los criterios")
       } else {
-        toast.success(`${response.list.length} cursos planificados`)
+        toast.success(`${mergedSchedule.length} cursos planificados`)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al calcular horario"
@@ -222,6 +251,26 @@ export default function PlanificarPage() {
   const toggleBuild = (build: string) => {
     setSelectedBuilds((prev) =>
       prev.includes(build) ? prev.filter((b) => b !== build) : [...prev, build]
+    )
+  }
+
+  const toggleCareer = (careerId: string) => {
+    setSelectedCareers((prev) =>
+      prev.includes(careerId) ? prev.filter((id) => id !== careerId) : [...prev, careerId]
+    )
+  }
+
+  const selectAllCareers = () => {
+    setSelectedCareers(careers.map((career) => career.career_id.toString()))
+  }
+
+  const clearAllCareers = () => {
+    setSelectedCareers([])
+  }
+
+  const toggleCursosCareer = (careerId: string) => {
+    setCursosCareers((prev) =>
+      prev.includes(careerId) ? prev.filter((id) => id !== careerId) : [...prev, careerId]
     )
   }
 
@@ -265,18 +314,40 @@ export default function PlanificarPage() {
 
   // Fetch subjects for selected career (Cursos tab)
   const handleFetchSubjects = async () => {
-    if (!cursosCareer) {
-      toast.error("Selecciona una carrera")
+    if (cursosCareers.length === 0) {
+      toast.error("Selecciona al menos una carrera")
       return
     }
     setLoadingSubjects(true)
     setSubjectsError(null)
     setSubjectsData([])
     try {
-      const response = await getSubjects(parseInt(cursosCareer, 10))
-      setSubjectsData(response.list)
-      if (response.list.length === 0) {
-        toast.info("No se encontraron cursos para esta carrera")
+      const responses = await Promise.all(
+        cursosCareers.map((careerId) => getSubjects(parseInt(careerId, 10)))
+      )
+
+      const merged = responses.flatMap((response) => response.list)
+
+      // Avoid duplicated rows when multiple careers share courses.
+      const uniqueByKey = new Map<string, Subject>()
+      merged.forEach((subject) => {
+        const key = [
+          subject.subject,
+          subject.curse_type,
+          subject.day,
+          subject.starts_at,
+          subject.room,
+          subject.build,
+        ].join("::")
+        if (!uniqueByKey.has(key)) {
+          uniqueByKey.set(key, subject)
+        }
+      })
+
+      const mergedSubjects = Array.from(uniqueByKey.values())
+      setSubjectsData(mergedSubjects)
+      if (mergedSubjects.length === 0) {
+        toast.info("No se encontraron cursos para las carreras seleccionadas")
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al obtener cursos"
@@ -561,19 +632,63 @@ export default function PlanificarPage() {
                 <div className="grid gap-4">
                   {/* Career Selection */}
                   <div>
-                    <Label className="text-foreground mb-2 block">Carrera</Label>
-                    <Select value={selectedCareer} onValueChange={setSelectedCareer}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar carrera" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {careers.map((career) => (
-                          <SelectItem key={career.career_id} value={career.career_id.toString()}>
-                            {career.career}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <Label className="text-foreground">Carreras</Label>
+                      {selectedCareers.length > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {selectedCareers.length} seleccionada{selectedCareers.length > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={selectAllCareers}
+                        disabled={loadingCareers || careers.length === 0}
+                      >
+                        Seleccionar todas
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearAllCareers}
+                        disabled={loadingCareers || selectedCareers.length === 0}
+                      >
+                        Limpiar
+                      </Button>
+                    </div>
+                    <div className="rounded-md border border-border p-3">
+                      {loadingCareers ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Cargando carreras...
+                        </div>
+                      ) : (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {careers.map((career) => {
+                            const id = career.career_id.toString()
+                            return (
+                              <div key={id} className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`schedule-career-${id}`}
+                                  checked={selectedCareers.includes(id)}
+                                  onCheckedChange={() => toggleCareer(id)}
+                                />
+                                <label
+                                  htmlFor={`schedule-career-${id}`}
+                                  className="cursor-pointer text-sm font-medium"
+                                >
+                                  {career.career}
+                                </label>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Course Types */}
@@ -641,7 +756,7 @@ export default function PlanificarPage() {
 
                   <Button
                     onClick={handleFetchSchedule}
-                    disabled={loadingSchedule || !selectedCareer}
+                    disabled={loadingSchedule || selectedCareers.length === 0}
                     className="w-full sm:w-auto"
                   >
                     {loadingSchedule ? (
@@ -798,22 +913,49 @@ export default function PlanificarPage() {
               <div className="rounded-lg border border-border bg-card p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-2 flex-1">
-                    <div className="flex-1 max-w-xs">
-                      <Label className="text-foreground mb-2 block">Carrera</Label>
-                      <Select value={cursosCareer} onValueChange={setCursosCareer} disabled={loadingCareers}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={loadingCareers ? "Cargando carreras..." : "Seleccionar carrera"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {careers.map((career) => (
-                            <SelectItem key={career.career_id} value={career.career_id.toString()}>
-                              {career.career}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="flex-1">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <Label className="text-foreground">Carreras</Label>
+                        {cursosCareers.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {cursosCareers.length} seleccionada{cursosCareers.length > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-between"
+                            disabled={loadingCareers}
+                          >
+                            {loadingCareers
+                              ? "Cargando carreras..."
+                              : cursosCareers.length > 0
+                                ? `${cursosCareers.length} carrera${cursosCareers.length > 1 ? "s" : ""} seleccionada${cursosCareers.length > 1 ? "s" : ""}`
+                                : "Seleccionar carreras"}
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                          {careers.map((career) => {
+                            const id = career.career_id.toString()
+                            return (
+                              <DropdownMenuCheckboxItem
+                                key={id}
+                                checked={cursosCareers.includes(id)}
+                                onCheckedChange={() => toggleCursosCareer(id)}
+                                onSelect={(event) => event.preventDefault()}
+                              >
+                                {career.career}
+                              </DropdownMenuCheckboxItem>
+                            )
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <Button onClick={handleFetchSubjects} disabled={loadingSubjects || !cursosCareer} className="w-full sm:w-auto sm:flex-1">
+                    <Button onClick={handleFetchSubjects} disabled={loadingSubjects || cursosCareers.length === 0} className="w-full sm:w-auto sm:flex-1">
                       {loadingSubjects ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
