@@ -42,14 +42,14 @@ export function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src="/logo.png"
+            src="/logo.svg"
             alt="SGE Logo"
             width={40}
             height={40}
             className="rounded"
             style={{ width: '40px', height: '40px' }}
           />
-          <span className="text-lg font-semibold text-foreground">S.G.E.</span>
+          <span className="text-lg font-bold text-foreground">S.G.E.</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -100,7 +100,7 @@ export function Navbar() {
             <SheetHeader className="border-b border-border pb-4">
               <SheetTitle className="flex items-center gap-3">
                 <Image
-                  src="/logo.png"
+                  src="/logo.svg"
                   alt="SGE Logo"
                   width={32}
                   height={32}
