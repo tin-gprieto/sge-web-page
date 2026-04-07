@@ -65,7 +65,7 @@ export function ParticipantsCareerChart() {
     let withoutCareer = 0
 
     participants.forEach((participant) => {
-      if (!participant.career || participant.career.trim() === "" || participant.career === "Sin carrera") {
+      if (!participant.career || participant.career.trim() === "" || participant.career.trim().toLowerCase() === "sin carrera") {
         withoutCareer++
       } else {
         careerCounts[participant.career] = (careerCounts[participant.career] || 0) + 1
