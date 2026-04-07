@@ -122,6 +122,7 @@ export default function PlanificarPage() {
   const [loadingSchedule, setLoadingSchedule] = useState(false)
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const [selectedPerson, setSelectedPerson] = useState<string>("todos")
+  const [selectedScheduleRows, setSelectedScheduleRows] = useState<string[]>([])
   const [scheduleFilterCourseType, setScheduleFilterCourseType] = useState<string>("todos")
   const [scheduleFilterDays, setScheduleFilterDays] = useState<string[]>([])
 
@@ -193,6 +194,7 @@ export default function PlanificarPage() {
     setLoadingSchedule(true)
     setScheduleError(null)
     setScheduleData([])
+    setSelectedScheduleRows([])
 
     try {
       const responses = await Promise.all(
@@ -272,6 +274,33 @@ export default function PlanificarPage() {
     setCursosCareers((prev) =>
       prev.includes(careerId) ? prev.filter((id) => id !== careerId) : [...prev, careerId]
     )
+  }
+
+  const getScheduleRowKey = (course: ScheduledClass) => {
+    return [
+      course.subject,
+      course.curse_type,
+      course.day,
+      course.starts_at,
+      course.room,
+      course.build,
+      [...course.responsibles].sort().join("|"),
+    ].join("::")
+  }
+
+  const toggleScheduleRow = (course: ScheduledClass) => {
+    const key = getScheduleRowKey(course)
+    setSelectedScheduleRows((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    )
+  }
+
+  const selectAllVisibleScheduleRows = () => {
+    setSelectedScheduleRows(filteredScheduleData.map((course) => getScheduleRowKey(course)))
+  }
+
+  const clearSelectedScheduleRows = () => {
+    setSelectedScheduleRows([])
   }
 
   // Get all unique persons from schedule data
@@ -471,30 +500,37 @@ export default function PlanificarPage() {
     return Array.from(builds).sort()
   }, [subjectsData])
 
-  // Copy personal schedule to clipboard
-  const copyPersonalScheduleToClipboard = () => {
-    if (!selectedPerson || selectedPerson === "todos") return
+  // Copy selected schedule rows or the current filtered result to clipboard
+  const copyScheduleToClipboard = () => {
+    const selectedKeys = new Set(selectedScheduleRows)
+    const rowsToCopy =
+      selectedKeys.size > 0
+        ? filteredScheduleData.filter((course) => selectedKeys.has(getScheduleRowKey(course)))
+        : filteredScheduleData
 
-    const personSchedule = getPersonSchedule()
-    let text = `Horario de ${selectedPerson}\n`
-    text += `${'='.repeat(50)}\n\n`
+    if (rowsToCopy.length === 0) {
+      toast.info("No hay cursos para copiar")
+      return
+    }
 
-    Object.entries(personSchedule).forEach(([day, courses]) => {
-      text += `${day}:\n`
-      courses.forEach((course) => {
-        text += `  - ${course.subject} (${course.curse_type})\n`
-        text += `    Hora: ${course.starts_at}:00 | Aula: ${course.room} | Edificio: ${course.build}\n`
-        const companions = course.responsibles.filter(p => p !== selectedPerson)
-        text += `    Companeros: ${companions.length > 0 ? companions.join(", ") : "N/A"}\n`
+    let text = `Horario planificado\n`
+    text += `${"=".repeat(50)}\n\n`
+
+    rowsToCopy.forEach((course) => {
+      text += `${course.day} - ${course.starts_at}:00\n`
+      text += `  ${course.subject} (${course.curse_type})\n`
+      text += `  Aula: ${course.room} | Edificio: ${course.build}\n`
+      text += `  Responsables: ${course.responsibles.join(", ") || "N/A"}\n\n`
+    })
+
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        toast.success("Horario copiado al portapapeles")
       })
-      text += `\n`
-    })
-
-    navigator.clipboard.writeText(text).then(() => {
-      toast.success("Horario copiado al portapapeles")
-    }).catch(() => {
-      toast.error("Error al copiar al portapapeles")
-    })
+      .catch(() => {
+        toast.error("Error al copiar al portapapeles")
+      })
   }
 
   return (
@@ -803,11 +839,11 @@ export default function PlanificarPage() {
                         selectedDays={scheduleFilterDays}
                         onSelectedDaysChange={setScheduleFilterDays}
                       />
-                      {selectedPerson && selectedPerson !== "todos" && (
+                      {scheduleData.length > 0 && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={copyPersonalScheduleToClipboard}
+                          onClick={copyScheduleToClipboard}
                           className="gap-2 h-9"
                         >
                           <Copy className="h-3.5 w-3.5" />
@@ -828,10 +864,60 @@ export default function PlanificarPage() {
 
                   {scheduleViewMode === "lista" ? (
                     <div className="rounded-lg border border-border bg-card overflow-hidden">
+                      <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={selectAllVisibleScheduleRows}
+                          disabled={filteredScheduleData.length === 0}
+                        >
+                          Seleccionar visibles
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearSelectedScheduleRows}
+                          disabled={selectedScheduleRows.length === 0}
+                        >
+                          Limpiar selección
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                          {selectedScheduleRows.length} filas seleccionadas
+                        </span>
+                      </div>
                       <ScrollArea className="w-full">
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-muted">
+                              {
+                                (() => {
+                                  const visibleRows = filteredScheduleData
+                                  const selectedVisibleCount = visibleRows.filter((course) =>
+                                    selectedScheduleRows.includes(getScheduleRowKey(course))
+                                  ).length
+                                  const allVisibleSelected =
+                                    visibleRows.length > 0 && selectedVisibleCount === visibleRows.length
+                                  const someVisibleSelected =
+                                    selectedVisibleCount > 0 && selectedVisibleCount < visibleRows.length
+
+                                  return (
+                              <TableHead className="w-12 text-xs font-semibold text-foreground">
+                                <Checkbox
+                                  checked={someVisibleSelected ? "indeterminate" : allVisibleSelected}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      selectAllVisibleScheduleRows()
+                                    } else {
+                                      clearSelectedScheduleRows()
+                                    }
+                                  }}
+                                />
+                              </TableHead>
+                                  )
+                                })()
+                              }
                               <TableHead className="text-xs font-semibold text-foreground">Asignatura</TableHead>
                               <TableHead className="text-xs font-semibold text-foreground">Tipo</TableHead>
                               <TableHead className="text-xs font-semibold text-foreground">Dia</TableHead>
@@ -842,8 +928,14 @@ export default function PlanificarPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {filteredScheduleData.map((course, idx) => (
-                              <TableRow key={idx}>
+                            {filteredScheduleData.map((course) => (
+                              <TableRow key={getScheduleRowKey(course)}>
+                                <TableCell className="w-12 align-middle">
+                                  <Checkbox
+                                    checked={selectedScheduleRows.includes(getScheduleRowKey(course))}
+                                    onCheckedChange={() => toggleScheduleRow(course)}
+                                  />
+                                </TableCell>
                                 <TableCell className="text-xs text-foreground whitespace-nowrap">
                                   {course.subject}
                                 </TableCell>
