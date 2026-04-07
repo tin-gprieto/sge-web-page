@@ -7,7 +7,7 @@ export default function Home() {
     <div className="flex flex-col items-center px-4 py-16">
       <div className="flex flex-col items-center gap-6 text-center">
         <Image
-          src="/logo.png"
+          src="/logo.svg"
           alt="SGE Logo"
           width={120}
           height={120}

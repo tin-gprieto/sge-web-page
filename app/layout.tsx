@@ -12,8 +12,8 @@ export const metadata: Metadata = {
   title: 'SGE - Sistema de Gestion de Expediciones',
   description: 'Sistema de Gestion de Expediciones - Actualizar y sortear participantes',
   icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
+    icon: '/logo.svg',
+    apple: '/logo.svg',
   },
 }
 
