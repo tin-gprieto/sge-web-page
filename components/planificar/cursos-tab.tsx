@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Table,
@@ -72,7 +71,7 @@ export function CursosTab() {
       const uniqueByKey = new Map<string, Subject>()
 
       merged.forEach((subject) => {
-        const key = [subject.subject, subject.curse_type, subject.day, subject.starts_at, subject.room, subject.build].join("::")
+        const key = [subject.subject, subject.course, subject.curse_type, subject.day, subject.starts_at, subject.room, subject.build].join("::")
         if (!uniqueByKey.has(key)) {
           uniqueByKey.set(key, subject)
         }
@@ -225,11 +224,12 @@ export function CursosTab() {
               <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
                 <span className="text-sm font-medium text-foreground">{filteredSubjectsData.length} cursos encontrados</span>
               </div>
-              <ScrollArea className="w-full">
-                <Table>
+              <div className="w-full max-h-[65vh] overflow-auto">
+                <Table className="min-w-[760px]">
                   <TableHeader>
                     <TableRow className="bg-muted">
                       <TableHead className="text-xs font-semibold text-foreground">Asignatura</TableHead>
+                      <TableHead className="text-xs font-semibold text-foreground">Comision</TableHead>
                       <TableHead className="text-xs font-semibold text-foreground">Tipo</TableHead>
                       <TableHead className="text-xs font-semibold text-foreground">Dia</TableHead>
                       <TableHead className="text-xs font-semibold text-foreground">Horario</TableHead>
@@ -241,6 +241,7 @@ export function CursosTab() {
                     {filteredSubjectsData.map((subject, idx) => (
                       <TableRow key={idx}>
                         <TableCell className="whitespace-nowrap text-xs text-foreground">{subject.subject}</TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-foreground">{subject.course}</TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-foreground">
                           <Badge variant="secondary" className="text-xs capitalize">
                             {subject.curse_type}
@@ -256,7 +257,7 @@ export function CursosTab() {
                     ))}
                   </TableBody>
                 </Table>
-              </ScrollArea>
+              </div>
             </div>
           ) : (
             <WeeklyCalendar
