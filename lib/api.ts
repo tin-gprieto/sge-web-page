@@ -474,6 +474,7 @@ export interface AvailabilityResponse {
 
 export interface Subject {
   subject: string
+  course: string
   curse_type: string
   day: string
   starts_at: number

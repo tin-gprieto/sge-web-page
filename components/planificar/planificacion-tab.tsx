@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Table,
@@ -128,6 +127,7 @@ export function PlanificacionTab() {
   const getScheduleRowKey = (course: ScheduledClass) => {
     return [
       course.subject,
+      course.course,
       course.curse_type,
       course.day,
       course.starts_at,
@@ -367,8 +367,8 @@ export function PlanificacionTab() {
                 </Button>
                 <span className="text-xs text-muted-foreground">{selectedScheduleRows.length} filas seleccionadas</span>
               </div>
-              <ScrollArea className="w-full">
-                <Table>
+              <div className="w-full max-h-[65vh] overflow-auto">
+                <Table className="min-w-[980px]">
                   <TableHeader>
                     <TableRow className="bg-muted">
                       <TableHead className="w-12 text-xs font-semibold text-foreground">
@@ -384,6 +384,7 @@ export function PlanificacionTab() {
                         />
                       </TableHead>
                       <TableHead className="text-xs font-semibold text-foreground">Asignatura</TableHead>
+                      <TableHead className="text-xs font-semibold text-foreground">Comision</TableHead>
                       <TableHead className="text-xs font-semibold text-foreground">Tipo</TableHead>
                       <TableHead className="text-xs font-semibold text-foreground">Dia</TableHead>
                       <TableHead className="text-xs font-semibold text-foreground">Horario</TableHead>
@@ -402,6 +403,7 @@ export function PlanificacionTab() {
                           />
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-foreground">{course.subject}</TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-foreground">{course.course}</TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-foreground">
                           <Badge variant="secondary" className="text-xs capitalize">
                             {course.curse_type}
@@ -426,7 +428,7 @@ export function PlanificacionTab() {
                     ))}
                   </TableBody>
                 </Table>
-              </ScrollArea>
+              </div>
             </div>
           ) : (
             <WeeklyCalendar
