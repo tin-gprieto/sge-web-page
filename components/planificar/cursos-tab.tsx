@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { ChevronDown, Loader2, XCircle } from "lucide-react"
+import { ChevronDown, Copy, Loader2, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -21,7 +22,30 @@ import { WeeklyCalendar, subjectsToEventGroups } from "@/components/weekly-calen
 import { ViewModeToggle } from "./view-mode-toggle"
 import { getCareers, getSubjects, type Career, type Subject } from "@/lib/api"
 
-const COURSE_TYPES = ["teorica", "practica", "teorica-practica"]
+const DAYS_OF_WEEK = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"]
+
+const getDayOrder = (day: string) => {
+  const index = DAYS_OF_WEEK.indexOf(day)
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index
+}
+
+const sortSubjects = (a: Subject, b: Subject) => {
+  const dayOrderDiff = getDayOrder(a.day) - getDayOrder(b.day)
+  if (dayOrderDiff !== 0) {
+    return dayOrderDiff
+  }
+
+  if (a.day !== b.day) {
+    return a.day.localeCompare(b.day, "es")
+  }
+
+  const startAtDiff = Number(a.starts_at) - Number(b.starts_at)
+  if (startAtDiff !== 0) {
+    return startAtDiff
+  }
+
+  return a.subject.localeCompare(b.subject, "es")
+}
 
 export function CursosTab() {
   const [careers, setCareers] = useState<Career[]>([])
@@ -34,7 +58,10 @@ export function CursosTab() {
   const [cursosFilterBuild, setCursosFilterBuild] = useState<string>("todos")
   const [cursosFilterDays, setCursosFilterDays] = useState<string[]>([])
   const [cursosFilterCourseType, setCursosFilterCourseType] = useState<string>("todos")
+  const [cursosFilterStartsAt, setCursosFilterStartsAt] = useState<string>("todos")
+  const [cursosFilterEndsAt, setCursosFilterEndsAt] = useState<string>("todos")
   const [cursosViewMode, setCursosViewMode] = useState<"lista" | "calendario">("lista")
+  const [selectedSubjectRows, setSelectedSubjectRows] = useState<string[]>([])
 
   useEffect(() => {
     void fetchCareers()
@@ -61,6 +88,7 @@ export function CursosTab() {
     setLoadingSubjects(true)
     setSubjectsError(null)
     setSubjectsData([])
+    setSelectedSubjectRows([])
 
     try {
       const responses = await Promise.all(
@@ -98,6 +126,71 @@ export function CursosTab() {
     )
   }
 
+  const getSubjectRowKey = (subject: Subject) => {
+    return [subject.subject, subject.course, subject.curse_type, subject.day, subject.starts_at, subject.room, subject.build].join("::")
+  }
+
+  const toggleSubjectRow = (subject: Subject) => {
+    const rowKey = getSubjectRowKey(subject)
+    setSelectedSubjectRows((prev) =>
+      prev.includes(rowKey) ? prev.filter((item) => item !== rowKey) : [...prev, rowKey]
+    )
+  }
+
+  const clearSelectedSubjectRows = () => {
+    setSelectedSubjectRows([])
+  }
+
+  const selectAllVisibleSubjectRows = () => {
+    setSelectedSubjectRows(sortedFilteredSubjectsData.map(getSubjectRowKey))
+  }
+
+  const copySelectedSubjects = () => {
+    const rowsToCopy = filteredSubjectsData.filter((subject) =>
+      selectedSubjectRows.includes(getSubjectRowKey(subject))
+    )
+
+    if (rowsToCopy.length === 0) {
+      toast.error("No hay materias seleccionadas para copiar.")
+      return
+    }
+
+    const groupedByDay = rowsToCopy.reduce<Record<string, Subject[]>>((acc, subject) => {
+      const day = subject.day
+      if (!acc[day]) {
+        acc[day] = []
+      }
+      acc[day].push(subject)
+      return acc
+    }, {})
+
+    const daysOrder = DAYS_OF_WEEK.filter((day) => groupedByDay[day]?.length > 0)
+    const extraDays = Object.keys(groupedByDay)
+      .filter((day) => !DAYS_OF_WEEK.includes(day))
+      .sort()
+    const orderedDays = [...daysOrder, ...extraDays]
+
+    const clipboardText = orderedDays
+      .map((day) => {
+        const dayRows = [...groupedByDay[day]].sort((a, b) => a.starts_at - b.starts_at)
+        const subjectsText = dayRows
+          .map((s) => `${s.subject} - ${s.course} (${s.curse_type}) ${s.starts_at}:00 ${s.build} ${s.room}`)
+          .join("\n")
+        return `${day.toUpperCase()}\n${subjectsText}`
+      })
+      .join("\n\n")
+
+    navigator.clipboard
+      .writeText(clipboardText)
+      .then(() => {
+        toast.success("Horario copiado al portapapeles")
+      })
+      .catch((err) => {
+        console.error("Error al copiar: ", err)
+        toast.error("Error al copiar al portapapeles")
+      })
+  }
+
   const filteredSubjectsData = useMemo(() => {
     let filtered = subjectsData
 
@@ -109,14 +202,46 @@ export function CursosTab() {
       filtered = filtered.filter((subject) => cursosFilterDays.includes(subject.day))
     }
 
+    const fromHour = cursosFilterStartsAt === "todos" ? null : Number(cursosFilterStartsAt)
+    const toHour = cursosFilterEndsAt === "todos" ? null : Number(cursosFilterEndsAt)
+    if (fromHour !== null || toHour !== null) {
+      filtered = filtered.filter((subject) => {
+        const startHour = Number(subject.starts_at)
+        if (fromHour !== null && toHour !== null) {
+          return startHour >= fromHour && startHour <= toHour
+        }
+        if (fromHour !== null) {
+          return startHour >= fromHour
+        }
+        return startHour <= (toHour as number)
+      })
+    }
+
     return filtered
-  }, [subjectsData, cursosFilterBuild, cursosFilterDays])
+  }, [subjectsData, cursosFilterBuild, cursosFilterDays, cursosFilterStartsAt, cursosFilterEndsAt])
 
   const subjectsBuilds = useMemo(() => {
     const builds = new Set<string>()
     subjectsData.forEach((subject) => builds.add(subject.build))
     return Array.from(builds).sort()
   }, [subjectsData])
+
+  const subjectsHours = useMemo(() => {
+    const hours = new Set<string>()
+    subjectsData.forEach((subject) => {
+      hours.add(subject.starts_at.toString())
+    })
+    return Array.from(hours).sort((a, b) => Number(a) - Number(b))
+  }, [subjectsData])
+
+  const sortedFilteredSubjectsData = useMemo(() => {
+    return [...filteredSubjectsData].sort(sortSubjects)
+  }, [filteredSubjectsData])
+
+  const allVisibleSelected =
+    sortedFilteredSubjectsData.length > 0 && sortedFilteredSubjectsData.every((subject) => selectedSubjectRows.includes(getSubjectRowKey(subject)))
+  const someVisibleSelected =
+    !allVisibleSelected && sortedFilteredSubjectsData.some((subject) => selectedSubjectRows.includes(getSubjectRowKey(subject)))
 
   const subjectsCourseTypes = useMemo(() => {
     const types = new Set<string>()
@@ -212,8 +337,40 @@ export function CursosTab() {
                 </Select>
               </div>
               <DayFilter selectedDays={cursosFilterDays} onSelectedDaysChange={setCursosFilterDays} />
+              <div className="flex items-center gap-2">
+                <Label className="hidden text-sm text-muted-foreground sm:inline">Desde:</Label>
+                <Select value={cursosFilterStartsAt} onValueChange={setCursosFilterStartsAt}>
+                  <SelectTrigger className="w-[100px] sm:w-[120px]">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {subjectsHours.map((hour) => (
+                      <SelectItem key={hour} value={hour}>
+                        {hour}:00
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="hidden text-sm text-muted-foreground sm:inline">Hasta:</Label>
+                <Select value={cursosFilterEndsAt} onValueChange={setCursosFilterEndsAt}>
+                  <SelectTrigger className="w-[100px] sm:w-[120px]">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {subjectsHours.map((hour) => (
+                      <SelectItem key={hour} value={hour}>
+                        {hour}:00
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <span className="text-xs text-muted-foreground sm:text-sm">
-                {filteredSubjectsData.length} de {subjectsData.length} cursos
+                {sortedFilteredSubjectsData.length} de {subjectsData.length} cursos
               </span>
             </div>
             <ViewModeToggle value={cursosViewMode} onChange={setCursosViewMode} />
@@ -221,13 +378,35 @@ export function CursosTab() {
 
           {cursosViewMode === "lista" ? (
             <div className="rounded-lg border border-border bg-card overflow-hidden">
-              <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
-                <span className="text-sm font-medium text-foreground">{filteredSubjectsData.length} cursos encontrados</span>
+              <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-4 py-3">
+                <Button type="button" variant="outline" size="sm" onClick={selectAllVisibleSubjectRows} disabled={sortedFilteredSubjectsData.length === 0}>
+                  Seleccionar visibles
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={clearSelectedSubjectRows} disabled={selectedSubjectRows.length === 0}>
+                  Limpiar selección
+                </Button>
+                <Button size="sm" variant="outline" onClick={copySelectedSubjects} className="gap-2 h-9" disabled={selectedSubjectRows.length === 0}>
+                  <Copy className="h-3.5 w-3.5" />
+                  Copiar Horario
+                </Button>
+                <span className="text-xs text-muted-foreground">{selectedSubjectRows.length} filas seleccionadas</span>
               </div>
               <div className="w-full max-h-[65vh] overflow-auto">
                 <Table className="min-w-[760px]">
                   <TableHeader>
                     <TableRow className="bg-muted">
+                      <TableHead className="w-12 text-xs font-semibold text-foreground">
+                        <Checkbox
+                          checked={someVisibleSelected ? "indeterminate" : allVisibleSelected}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              selectAllVisibleSubjectRows()
+                            } else {
+                              clearSelectedSubjectRows()
+                            }
+                          }}
+                        />
+                      </TableHead>
                       <TableHead className="text-xs font-semibold text-foreground">Asignatura</TableHead>
                       <TableHead className="text-xs font-semibold text-foreground">Comision</TableHead>
                       <TableHead className="text-xs font-semibold text-foreground">Tipo</TableHead>
@@ -238,8 +417,14 @@ export function CursosTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredSubjectsData.map((subject, idx) => (
-                      <TableRow key={idx}>
+                    {sortedFilteredSubjectsData.map((subject) => (
+                      <TableRow key={getSubjectRowKey(subject)}>
+                        <TableCell className="w-12 align-middle">
+                          <Checkbox
+                            checked={selectedSubjectRows.includes(getSubjectRowKey(subject))}
+                            onCheckedChange={() => toggleSubjectRow(subject)}
+                          />
+                        </TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-foreground">{subject.subject}</TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-foreground">{subject.course}</TableCell>
                         <TableCell className="whitespace-nowrap text-xs text-foreground">
