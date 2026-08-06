@@ -78,6 +78,15 @@ export interface ExpeditionParticipant {
   has_won: boolean
 }
 
+// Expedition participant across all years (GET /expedition/participants response - includes year)
+export interface ExpeditionParticipantWithYear extends ExpeditionParticipant {
+  year: number
+}
+
+export interface ExpeditionAllYearsResponse {
+  list: ExpeditionParticipantWithYear[]
+}
+
 export interface ExpeditionHistory {
   expedition: string
   year: number
@@ -331,6 +340,17 @@ export async function getExpeditionParticipants(
 ): Promise<ExpeditionResponse> {
   const params = new URLSearchParams({ expedition, year: year.toString() })
   return apiRequest<ExpeditionResponse>(`/expedition?${params}`)
+}
+
+/**
+ * Get expedition participants across all years
+ * GET /expedition/participants
+ */
+export async function getExpeditionParticipantsAllYears(
+  expedition: string
+): Promise<ExpeditionAllYearsResponse> {
+  const params = new URLSearchParams({ expedition })
+  return apiRequest<ExpeditionAllYearsResponse>(`/expedition/participants?${params}`)
 }
 
 /**

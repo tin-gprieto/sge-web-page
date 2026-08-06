@@ -69,6 +69,38 @@ Returns all participants for a given expedition and year.
 
 ---
 
+## 2b. Get Expedition Participants (all years)
+
+### GET /expedition/participants
+
+### Description
+Returns all participants for a given expedition name, regardless of year.
+
+### Query Parameters
+
+| Parameter  | Type   | Required | Description        |
+|------------|--------|----------|--------------------|
+| expedition | string | yes      | Expedition name    |
+
+### Response
+Same shape as `GET /expedition`, with an additional `year` field per participant identifying which occurrence of the expedition they belong to.
+```json
+{
+  "list": [
+    {
+      "first_name": "string",
+      "last_name": "string",
+      "census": 123456,
+      "career": "string",
+      "has_won": true,
+      "year": 2025
+    }
+  ]
+}
+```
+
+---
+
 ## 3. Get Expedition List
 
 ### GET /expedition/list

@@ -1,5 +1,12 @@
 import ExcelJS from "exceljs"
-import type { ParticipantForRate, ParticipantWithWon, ParticipantWithScore, ParticipantForInsert } from "./api"
+import type {
+    ParticipantForRate,
+    ParticipantWithWon,
+    ParticipantWithScore,
+    ParticipantForInsert,
+    ExpeditionParticipant,
+    ExpeditionParticipantWithYear,
+} from "./api"
 
 // Fields that can be read from Excel for rate requests
 type RateRequestField = "census" | "document" | "career" | "phone_number"
@@ -81,6 +88,14 @@ const API_TO_EXCEL_MAP_SCORE: Record<keyof Omit<ParticipantWithScore, "document"
     census: "Padrón",
     career: "Carrera",
     phone_number: "Teléfono",
+}
+
+const API_TO_EXCEL_MAP_EXPEDITION: Record<keyof ExpeditionParticipant, string> = {
+    first_name: "Nombre",
+    last_name: "Apellido",
+    census: "Padrón",
+    career: "Carrera",
+    has_won: "Ganador",
 }
 
 /**
@@ -361,6 +376,22 @@ export function scoredParticipantsToExcel(
         [API_TO_EXCEL_MAP_SCORE.census]: p.census,
         [API_TO_EXCEL_MAP_SCORE.career]: p.career,
         [API_TO_EXCEL_MAP_SCORE.phone_number]: p.phone_number,
+    }))
+}
+
+/**
+ * Transforms expedition search results (with or without a per-row year) to Excel-friendly records
+ */
+export function expeditionParticipantsToExcel(
+    participants: ExpeditionParticipant[] | ExpeditionParticipantWithYear[]
+): Record<string, unknown>[] {
+    return participants.map((p) => ({
+        [API_TO_EXCEL_MAP_EXPEDITION.first_name]: p.first_name,
+        [API_TO_EXCEL_MAP_EXPEDITION.last_name]: p.last_name,
+        [API_TO_EXCEL_MAP_EXPEDITION.census]: p.census,
+        [API_TO_EXCEL_MAP_EXPEDITION.career]: p.career,
+        ...("year" in p ? { Año: p.year } : {}),
+        [API_TO_EXCEL_MAP_EXPEDITION.has_won]: p.has_won ? "Sí" : "No",
     }))
 }
 

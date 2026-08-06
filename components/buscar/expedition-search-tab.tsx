@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Loader2, Search, XCircle } from "lucide-react"
+import { Download, Loader2, Search, XCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -14,13 +14,49 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { getExpeditionHistorial, getExpeditionParticipants, type ExpeditionHistorialItem, type ExpeditionParticipant } from "@/lib/api"
+import {
+  getExpeditionHistorial,
+  getExpeditionParticipants,
+  getExpeditionParticipantsAllYears,
+  type ExpeditionHistorialItem,
+  type ExpeditionParticipant,
+  type ExpeditionParticipantWithYear,
+} from "@/lib/api"
+import { downloadAsExcel, expeditionParticipantsToExcel } from "@/lib/excel_integration"
 
-function ExpeditionResult({ data, expedition }: { data: ExpeditionParticipant[]; expedition: string }) {
+const ALL_YEARS_VALUE = "all"
+
+function ExpeditionResult({
+  data,
+  expedition,
+  filename,
+}: {
+  data: ExpeditionParticipant[] | ExpeditionParticipantWithYear[]
+  expedition: string
+  filename: string
+}) {
   const winners = data.filter((participant) => participant.has_won)
+  const showYear = data.length > 0 && "year" in data[0]
+
+  const handleDownload = () => {
+    downloadAsExcel(expeditionParticipantsToExcel(data), filename)
+  }
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownload}
+          disabled={data.length === 0}
+          className="gap-2"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Descargar Excel
+        </Button>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4">
           <span className="text-xs font-medium text-muted-foreground">Expedicion</span>
@@ -56,6 +92,11 @@ function ExpeditionResult({ data, expedition }: { data: ExpeditionParticipant[];
                 <TableHead className="whitespace-nowrap text-xs font-semibold text-foreground">
                   Carrera
                 </TableHead>
+                {showYear && (
+                  <TableHead className="whitespace-nowrap text-xs font-semibold text-foreground">
+                    Año
+                  </TableHead>
+                )}
                 <TableHead className="whitespace-nowrap text-xs font-semibold text-foreground">
                   Estado
                 </TableHead>
@@ -64,7 +105,7 @@ function ExpeditionResult({ data, expedition }: { data: ExpeditionParticipant[];
             <TableBody>
               {data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={showYear ? 7 : 6} className="py-8 text-center text-sm text-muted-foreground">
                     No se encontraron participantes.
                   </TableCell>
                 </TableRow>
@@ -86,6 +127,11 @@ function ExpeditionResult({ data, expedition }: { data: ExpeditionParticipant[];
                     <TableCell className="whitespace-nowrap text-xs text-foreground">
                       {participant.career}
                     </TableCell>
+                    {showYear && (
+                      <TableCell className="whitespace-nowrap text-xs text-foreground">
+                        {(participant as ExpeditionParticipantWithYear).year}
+                      </TableCell>
+                    )}
                     <TableCell className="whitespace-nowrap">
                       {participant.has_won ? (
                         <Badge className="border-primary/20 bg-primary/10 text-xs text-primary">
@@ -114,7 +160,7 @@ export function ExpeditionSearchTab() {
   const [expeditionYear, setExpeditionYear] = useState("")
   const [expeditionName, setExpeditionName] = useState("")
   const [isSearching, setIsSearching] = useState(false)
-  const [result, setResult] = useState<ExpeditionParticipant[] | null>(null)
+  const [result, setResult] = useState<ExpeditionParticipant[] | ExpeditionParticipantWithYear[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -149,6 +195,8 @@ export function ExpeditionSearchTab() {
     [historial]
   )
 
+  const isAllYears = expeditionYear === ALL_YEARS_VALUE
+
   const expeditionsForYear = useMemo(
     () =>
       expeditionYear
@@ -156,6 +204,13 @@ export function ExpeditionSearchTab() {
         : [],
     [expeditionYear, historial]
   )
+
+  const allExpeditionNames = useMemo(
+    () => [...new Set(historial.map((item) => item.name))].sort(),
+    [historial]
+  )
+
+  const expeditionOptions = isAllYears ? allExpeditionNames : expeditionsForYear
 
   const canSearch = expeditionYear !== "" && expeditionName !== "" && !isLoadingHistorial
 
@@ -170,11 +225,17 @@ export function ExpeditionSearchTab() {
     setIsSearching(true)
 
     try {
-      const response = await getExpeditionParticipants(expeditionName, parseInt(expeditionYear, 10))
+      const response = isAllYears
+        ? await getExpeditionParticipantsAllYears(expeditionName)
+        : await getExpeditionParticipants(expeditionName, parseInt(expeditionYear, 10))
       setResult(response.list)
 
       if (response.list.length === 0) {
-        toast.info("No se encontraron participantes para esta expedición y año.")
+        toast.info(
+          isAllYears
+            ? "No se encontraron participantes para esta expedición."
+            : "No se encontraron participantes para esta expedición y año."
+        )
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al buscar expedición"
@@ -205,6 +266,7 @@ export function ExpeditionSearchTab() {
                 <SelectValue placeholder={isLoadingHistorial ? "Cargando años..." : "Seleccionar año"} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={ALL_YEARS_VALUE}>Todos los años</SelectItem>
                 {availableYears.map((year) => (
                   <SelectItem key={year} value={year.toString()}>
                     {year}
@@ -226,13 +288,11 @@ export function ExpeditionSearchTab() {
             >
               <SelectTrigger className="w-full">
                 <SelectValue
-                  placeholder={
-                    expeditionYear ? "Seleccionar expedición" : "Primero selecciona un año"
-                  }
+                  placeholder={expeditionYear ? "Seleccionar expedición" : "Primero selecciona un año"}
                 />
               </SelectTrigger>
               <SelectContent>
-                {expeditionsForYear.map((name) => (
+                {expeditionOptions.map((name) => (
                   <SelectItem key={name} value={name}>
                     {name}
                   </SelectItem>
@@ -268,7 +328,13 @@ export function ExpeditionSearchTab() {
         </div>
       )}
 
-      {result && expeditionName && <ExpeditionResult data={result} expedition={expeditionName} />}
+      {result && expeditionName && (
+        <ExpeditionResult
+          data={result}
+          expedition={expeditionName}
+          filename={`expedicion-${expeditionName}${isAllYears ? "" : `-${expeditionYear}`}.xlsx`}
+        />
+      )}
     </div>
   )
 }
