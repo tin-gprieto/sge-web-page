@@ -83,11 +83,11 @@ const API_TO_EXCEL_MAP: Record<keyof Omit<ParticipantWithWon, "document">, strin
 
 const API_TO_EXCEL_MAP_SCORE: Record<keyof Omit<ParticipantWithScore, "document">, string> = {
     first_name: "Nombre",
+    score: "Score",
     last_name: "Apellido",
     census: "Padrón",
     career: "Carrera",
     phone_number: "Teléfono",
-    score: "Score",
 }
 
 const API_TO_EXCEL_MAP_EXPEDITION: Record<keyof ExpeditionParticipant, string> = {
@@ -371,11 +371,11 @@ export function scoredParticipantsToExcel(
 ): Record<string, unknown>[] {
     return participants.map((p) => ({
         [API_TO_EXCEL_MAP_SCORE.first_name]: p.first_name,
+        [API_TO_EXCEL_MAP_SCORE.score]: p.score,
         [API_TO_EXCEL_MAP_SCORE.last_name]: p.last_name,
         [API_TO_EXCEL_MAP_SCORE.census]: p.census,
         [API_TO_EXCEL_MAP_SCORE.career]: p.career,
         [API_TO_EXCEL_MAP_SCORE.phone_number]: p.phone_number,
-        [API_TO_EXCEL_MAP_SCORE.score]: p.score,
     }))
 }
 
