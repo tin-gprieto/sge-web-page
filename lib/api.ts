@@ -11,7 +11,8 @@ export interface Participant {
   last_name: string
   census: number
   career: string
-  phone_number: string
+  // Optional on the backend - participants without a phone on file get null
+  phone_number: string | null
 }
 
 // Participant with document field (returned in rate/lottery/insert responses)
@@ -26,7 +27,7 @@ export interface ParticipantForRate {
   first_name?: string
   last_name?: string
   career: string
-  phone_number: string
+  phone_number?: string
   has_ig_req: boolean
 }
 
@@ -40,7 +41,7 @@ export interface ParticipantForLottery {
   census: number
   document?: number
   career: string
-  phone_number: string
+  phone_number?: string | null
   score: number
 }
 
@@ -59,7 +60,7 @@ export interface ParticipantForInsert {
   first_name?: string
   last_name?: string
   career?: string
-  phone_number?: string
+  phone_number?: string | null
   has_won: boolean
 }
 

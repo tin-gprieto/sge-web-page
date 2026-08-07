@@ -225,7 +225,7 @@ export function excelToParticipants(
             first_name: participant.first_name, // Optional fallback for FIUBA
             last_name: participant.last_name, // Optional fallback for FIUBA
             career: participant.career || "",
-            phone_number: participant.phone_number || "",
+            phone_number: participant.phone_number || undefined,
             has_ig_req: hasIgReq,
         }
     }).filter((p) =>
