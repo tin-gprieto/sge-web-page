@@ -458,20 +458,33 @@ export async function downloadLotteryResults(
     await downloadAsExcel(excelData, filename)
 }
 
+// Columns the backend requires for /rate, with a short list of accepted
+// header aliases shown to the user so they know what to rename a column to.
+// Kept in sync with EXCEL_TO_RATE_REQUEST_MAP above.
+const RATE_REQUIRED_COLUMNS: { missingLabel: string; isSatisfied: (fields: Set<RateRequestField>) => boolean }[] = [
+    {
+        missingLabel: "Padrón o Documento (alias aceptados: Padrón, Censo, Documento, DNI)",
+        isSatisfied: (fields) => fields.has("census") || fields.has("document"),
+    },
+    {
+        missingLabel: "Carrera",
+        isSatisfied: (fields) => fields.has("career"),
+    },
+]
+
 /**
  * Validates that Excel data contains required participant fields for rate request
- * Required: census (or document), career
+ * Required: census (or document), career. Teléfono is accepted but optional.
  * Note: first_name/last_name are NOT required - they come from FIUBA DB
  */
 export function validateParticipantData(
     excelData: Record<string, unknown>[]
-): { valid: boolean; missingFields: string[] } {
+): { valid: boolean; missingFields: string[]; detectedColumns: string[] } {
     if (!excelData || excelData.length === 0) {
-        return { valid: false, missingFields: ["No hay datos"] }
+        return { valid: false, missingFields: ["No hay datos en el archivo"], detectedColumns: [] }
     }
 
     const headers = Object.keys(excelData[0])
-    const missingFields: string[] = []
     const mappedFields: Set<RateRequestField> = new Set()
 
     for (const header of headers) {
@@ -481,20 +494,14 @@ export function validateParticipantData(
         }
     }
 
-    // Check for census or document (at least one is required)
-    const hasCensusOrDoc = mappedFields.has("census") || mappedFields.has("document")
-    if (!hasCensusOrDoc) {
-        missingFields.push("Padrón o Documento")
-    }
-
-    // Career is required
-    if (!mappedFields.has("career")) {
-        missingFields.push("Carrera")
-    }
+    const missingFields = RATE_REQUIRED_COLUMNS
+        .filter((column) => !column.isSatisfied(mappedFields))
+        .map((column) => column.missingLabel)
 
     return {
         valid: missingFields.length === 0,
         missingFields,
+        detectedColumns: headers,
     }
 }
 

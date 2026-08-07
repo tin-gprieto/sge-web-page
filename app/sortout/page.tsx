@@ -138,7 +138,12 @@ export default function SortoutPage() {
 
       const validation = validateParticipantData(excelData)
       if (!validation.valid) {
-        setError(`Faltan campos requeridos: ${validation.missingFields.join(", ")}`)
+        const detected = validation.detectedColumns.length > 0
+          ? ` Columnas detectadas en el archivo: ${validation.detectedColumns.join(", ")}.`
+          : ""
+        setError(
+          `El archivo Excel no tiene el formato esperado. Faltan las columnas: ${validation.missingFields.join("; ")}.${detected}`
+        )
         return
       }
 
@@ -451,6 +456,14 @@ export default function SortoutPage() {
           {/* Step 2: Upload Excel */}
           <div className="flex flex-col gap-2">
             <Label className="text-foreground">Archivo Excel</Label>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">Formato esperado</span> (los nombres de columna no distinguen mayúsculas ni tildes):
+              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                <li><strong className="text-foreground">Padrón</strong> o <strong className="text-foreground">Documento</strong>: identifica al participante</li>
+                <li><strong className="text-foreground">Carrera</strong></li>
+                <li>Opcionales: Teléfono, Nombre, Apellido (se completan desde la base de FIUBA si faltan) e Instagram (duplica el puntaje si se completó)</li>
+              </ul>
+            </div>
             <ExcelUpload
               onDataChange={handleExcelChange}
               data={excelData}
