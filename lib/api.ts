@@ -2,13 +2,17 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8
 
 // Types
 
+// Cuatrimestre of an expedition (1C or 2C). Backend defaults to "1C" when omitted.
+export type Cuatrimestre = "1C" | "2C"
+
 // Base participant info from FIUBA DB (returned in responses)
 export interface Participant {
   first_name: string
   last_name: string
   census: number
   career: string
-  phone_number: string
+  // Optional on the backend - participants without a phone on file get null
+  phone_number: string | null
 }
 
 // Participant with document field (returned in rate/lottery/insert responses)
@@ -23,7 +27,7 @@ export interface ParticipantForRate {
   first_name?: string
   last_name?: string
   career: string
-  phone_number: string
+  phone_number?: string
   has_ig_req: boolean
 }
 
@@ -37,7 +41,7 @@ export interface ParticipantForLottery {
   census: number
   document?: number
   career: string
-  phone_number: string
+  phone_number?: string | null
   score: number
 }
 
@@ -56,7 +60,7 @@ export interface ParticipantForInsert {
   first_name?: string
   last_name?: string
   career?: string
-  phone_number?: string
+  phone_number?: string | null
   has_won: boolean
 }
 
@@ -101,6 +105,7 @@ export interface ParticipantResponse {
 export interface RateRequest {
   expedition: string
   year: number
+  cuatrimestre?: Cuatrimestre
   list: ParticipantForRate[]
 }
 
@@ -112,6 +117,7 @@ export interface LotteryRequest {
   count: number
   expedition: string
   year: number
+  cuatrimestre?: Cuatrimestre
   list: ParticipantForLottery[]
 }
 
@@ -122,6 +128,7 @@ export interface LotteryResponse {
 export interface InsertRequest {
   expedition: string
   year: number
+  cuatrimestre?: Cuatrimestre
   list: ParticipantForInsert[]
 }
 
@@ -154,14 +161,106 @@ export interface ExpeditionListResponse {
 export interface ExpeditionHistorialItem {
   name: string
   year: number
+  cuatrimestre: Cuatrimestre
 }
 
 export interface ExpeditionHistorialResponse {
   list: ExpeditionHistorialItem[]
 }
 
+// A single field-level validation error, as returned by FastAPI's 422 responses
+export interface ApiValidationErrorItem {
+  loc: (string | number)[]
+  msg: string
+  type: string
+}
+
+// The backend's centralized error handler wraps most non-422 errors (400/403/409/500)
+// in an object like { error: "Conflicto", mensaje: "..." } rather than a plain string.
+export interface ApiStructuredErrorDetail {
+  error?: string
+  mensaje?: string
+  [key: string]: unknown
+}
+
 export interface ApiErrorResponse {
-  detail: string
+  detail: string | ApiValidationErrorItem[] | ApiStructuredErrorDetail
+}
+
+// Human-friendly labels for fields that show up in validation error paths
+const FIELD_LABELS: Record<string, string> = {
+  phone_number: "Teléfono",
+  career: "Carrera",
+  census: "Padrón",
+  document: "Documento",
+  first_name: "Nombre",
+  last_name: "Apellido",
+  expedition: "Expedición",
+  year: "Año",
+  cuatrimestre: "Cuatrimestre",
+  count: "Cantidad de ganadores",
+}
+
+// Translates common Pydantic validation messages into short Spanish phrases
+function humanizeValidationMessage(msg: string): string {
+  if (/^field required$/i.test(msg)) return "es obligatorio"
+  if (/at least 1 character/i.test(msg)) return "no puede estar vacío"
+  if (/valid integer/i.test(msg)) return "debe ser un número entero válido"
+  if (/valid number/i.test(msg)) return "debe ser un número válido"
+  if (/greater than 0/i.test(msg)) return "debe ser mayor a 0"
+  return msg
+}
+
+/**
+ * Turns a FastAPI 422 `detail` array into a short, actionable Spanish message.
+ * Groups repeated field errors (e.g. a column missing from every row of an
+ * uploaded Excel) into one line instead of dumping one entry per participant.
+ */
+function formatValidationErrors(items: ApiValidationErrorItem[]): string {
+  const groups = new Map<string, { label: string; message: string; count: number }>()
+
+  for (const item of items) {
+    const fieldSegment = [...item.loc].reverse().find(seg => typeof seg === "string" && seg !== "body")
+    const field = typeof fieldSegment === "string" ? fieldSegment : "datos"
+    const label = FIELD_LABELS[field] ?? field
+    const message = humanizeValidationMessage(item.msg)
+    const key = `${field}:${message}`
+
+    const existing = groups.get(key)
+    if (existing) {
+      existing.count += 1
+    } else {
+      groups.set(key, { label, message, count: 1 })
+    }
+  }
+
+  return Array.from(groups.values())
+    .map(({ label, message, count }) =>
+      count > 1 ? `${label} ${message} (${count} filas)` : `${label} ${message}`
+    )
+    .join(" · ")
+}
+
+/**
+ * Resolves a backend error `detail` field into a single readable string,
+ * regardless of which of the three shapes the backend used for it:
+ * a plain string, a FastAPI 422 validation-error array, or the backend's
+ * own { error, mensaje } structured error object.
+ */
+function resolveErrorDetail(rawDetail: unknown): string | undefined {
+  if (typeof rawDetail === "string") return rawDetail
+
+  if (Array.isArray(rawDetail)) {
+    return formatValidationErrors(rawDetail as ApiValidationErrorItem[])
+  }
+
+  if (rawDetail && typeof rawDetail === "object") {
+    const { mensaje, error } = rawDetail as ApiStructuredErrorDetail
+    if (typeof mensaje === "string" && mensaje) return mensaje
+    if (typeof error === "string" && error) return error
+  }
+
+  return undefined
 }
 
 /**
@@ -250,6 +349,8 @@ function getErrorMessage(status: number, detail?: string): string {
       return "Acceso denegado"
     case 404:
       return "Recurso no encontrado"
+    case 409:
+      return "Conflicto: la operación no se puede completar en el estado actual"
     case 422:
       return "Error de validación en los datos"
     case 429:
@@ -314,7 +415,8 @@ async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    const errorDetail = (data as ApiErrorResponse)?.detail
+    const rawDetail = (data as ApiErrorResponse)?.detail
+    const errorDetail = resolveErrorDetail(rawDetail)
     const errorMessage = getErrorMessage(response.status, errorDetail)
     throw new ApiError(errorMessage, response.status, response.statusText)
   }

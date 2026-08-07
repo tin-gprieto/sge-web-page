@@ -43,6 +43,7 @@ import {
   type ParticipantWithWon,
   type Expedition,
   type ExpeditionHistorialItem,
+  type Cuatrimestre,
 } from "@/lib/api"
 import {
   excelToParticipants,
@@ -59,6 +60,7 @@ export default function SortoutPage() {
   const [historial, setHistorial] = useState<ExpeditionHistorialItem[]>([])
   const [expeditionId, setExpeditionId] = useState<string>("")
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear().toString())
+  const [cuatrimestre, setCuatrimestre] = useState<Cuatrimestre>("1C")
   const [winnersCount, setWinnersCount] = useState("")
 
   // Excel and data state
@@ -108,9 +110,13 @@ export default function SortoutPage() {
 
   const selectedExpedition = expeditions.find(e => e.id.toString() === expeditionId)
 
-  // Check if expedition/year combo already exists in historial
-  const expeditionYearExists = selectedExpedition && currentYear.trim()
-    ? historial.some(h => h.name === selectedExpedition.name && h.year === parseInt(currentYear, 10))
+  // Check if expedition/year/cuatrimestre combo already exists in historial
+  const expeditionComboExists = selectedExpedition && currentYear.trim()
+    ? historial.some(h =>
+        h.name === selectedExpedition.name &&
+        h.year === parseInt(currentYear, 10) &&
+        h.cuatrimestre === cuatrimestre
+      )
     : false
 
   // Reset downstream data when expedition/year changes
@@ -126,13 +132,18 @@ export default function SortoutPage() {
   // Auto-rate when we have all required data (expedition, year, excelData)
   useEffect(() => {
     async function autoRate() {
-      // Don't auto-rate if expedition/year combo already exists
-      if (expeditionYearExists) return
+      // Don't auto-rate if expedition/year/cuatrimestre combo already exists
+      if (expeditionComboExists) return
       if (!excelData || !selectedExpedition || !currentYear.trim() || ratedParticipants) return
 
       const validation = validateParticipantData(excelData)
       if (!validation.valid) {
-        setError(`Faltan campos requeridos: ${validation.missingFields.join(", ")}`)
+        const detected = validation.detectedColumns.length > 0
+          ? ` Columnas detectadas en el archivo: ${validation.detectedColumns.join(", ")}.`
+          : ""
+        setError(
+          `El archivo Excel no tiene el formato esperado. Faltan las columnas: ${validation.missingFields.join("; ")}.${detected}`
+        )
         return
       }
 
@@ -148,6 +159,7 @@ export default function SortoutPage() {
         const response = await rateParticipants({
           expedition: selectedExpedition.name,
           year: parseInt(currentYear, 10),
+          cuatrimestre,
           list: participants,
         })
         const sorted = response.list.toSorted((a, b) => b.score - a.score)
@@ -163,7 +175,7 @@ export default function SortoutPage() {
     }
 
     autoRate()
-  }, [excelData, selectedExpedition, currentYear, ratedParticipants, expeditionYearExists])
+  }, [excelData, selectedExpedition, currentYear, cuatrimestre, ratedParticipants, expeditionComboExists])
 
   const handleExcelChange = useCallback(
     (data: Record<string, unknown>[] | null, name: string) => {
@@ -208,6 +220,7 @@ export default function SortoutPage() {
         count: parseInt(winnersCount, 10),
         expedition: selectedExpedition.name,
         year: parseInt(currentYear, 10),
+        cuatrimestre,
         list: ratedParticipants,
       })
 
@@ -238,6 +251,7 @@ export default function SortoutPage() {
       const response = await insertParticipants({
         expedition: selectedExpedition.name,
         year: parseInt(currentYear, 10),
+        cuatrimestre,
         list: lotteryResult,
       })
 
@@ -319,7 +333,7 @@ export default function SortoutPage() {
           </div>
 
           {/* Step 1: Configuration */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="flex flex-col gap-2">
               <Label className="text-foreground">Expedición</Label>
               <div className="flex gap-2">
@@ -398,6 +412,24 @@ export default function SortoutPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
+              <Label htmlFor="cuatrimestre-sortout" className="text-foreground">Cuatrimestre</Label>
+              <Select
+                value={cuatrimestre}
+                onValueChange={(value) => {
+                  setCuatrimestre(value as Cuatrimestre)
+                  resetData()
+                }}
+              >
+                <SelectTrigger id="cuatrimestre-sortout" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1C">1C</SelectItem>
+                  <SelectItem value="2C">2C</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
               <Label htmlFor="winners-count" className="text-foreground">Nro. de ganadores</Label>
               <Input
                 id="winners-count"
@@ -410,12 +442,12 @@ export default function SortoutPage() {
             </div>
           </div>
 
-          {/* Warning: Expedition/Year already exists */}
-          {expeditionYearExists && (
+          {/* Warning: Expedition/Year/Cuatrimestre already exists */}
+          {expeditionComboExists && (
             <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-600 dark:text-amber-400">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>
-                La expedición <strong>{selectedExpedition?.name}</strong> ya fue realizada en el año <strong>{currentYear}</strong>.
+                La expedición <strong>{selectedExpedition?.name}</strong> ya fue realizada en el <strong>{cuatrimestre}</strong> del año <strong>{currentYear}</strong>.
                 No es posible realizar otro sorteo para esta combinación.
               </span>
             </div>
@@ -424,6 +456,35 @@ export default function SortoutPage() {
           {/* Step 2: Upload Excel */}
           <div className="flex flex-col gap-2">
             <Label className="text-foreground">Archivo Excel</Label>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">Formato esperado</span> (los nombres de columna no distinguen mayúsculas ni tildes):
+              <ul className="mt-1 list-disc space-y-1 pl-4">
+                <li>
+                  <strong className="text-foreground">Padrón</strong> / <strong className="text-foreground">Censo</strong> / <strong className="text-foreground">Documento</strong> / <strong className="text-foreground">DNI</strong>{" "}
+                  <span className="italic">(obligatoria, al menos una)</span>: número que identifica al participante. Ej: <em>105692</em> o <em>DNI40123456</em>
+                </li>
+                <li>
+                  <strong className="text-foreground">Carrera</strong>{" "}
+                  <span className="italic">(obligatoria)</span>: texto con el nombre de la carrera. Ej: <em>Ingeniería Informática</em>
+                </li>
+                <li>
+                  <strong className="text-foreground">Teléfono</strong>{" "}
+                  <span className="italic">(opcional)</span>: número de contacto, como texto o número. Ej: <em>1122334455</em>
+                </li>
+                <li>
+                  <strong className="text-foreground">Nombre</strong>{" "}
+                  <span className="italic">(opcional)</span>: texto. Se usa solo si el padrón/documento no se encuentra en la base de FIUBA. Ej: <em>Juan</em>
+                </li>
+                <li>
+                  <strong className="text-foreground">Apellido</strong>{" "}
+                  <span className="italic">(opcional)</span>: texto, mismo uso que Nombre. Ej: <em>Pérez</em>
+                </li>
+                <li>
+                  <strong className="text-foreground">Instagram</strong> / <strong className="text-foreground">IG</strong>{" "}
+                  <span className="italic">(opcional)</span>: cualquier valor no vacío (usuario, &quot;sí&quot;, etc.) duplica el puntaje del participante (x2). Ej: <em>@juanperez</em>
+                </li>
+              </ul>
+            </div>
             <ExcelUpload
               onDataChange={handleExcelChange}
               data={excelData}
