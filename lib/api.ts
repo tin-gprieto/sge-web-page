@@ -2,6 +2,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8
 
 // Types
 
+// Cuatrimestre of an expedition (1C or 2C). Backend defaults to "1C" when omitted.
+export type Cuatrimestre = "1C" | "2C"
+
 // Base participant info from FIUBA DB (returned in responses)
 export interface Participant {
   first_name: string
@@ -101,6 +104,7 @@ export interface ParticipantResponse {
 export interface RateRequest {
   expedition: string
   year: number
+  cuatrimestre?: Cuatrimestre
   list: ParticipantForRate[]
 }
 
@@ -112,6 +116,7 @@ export interface LotteryRequest {
   count: number
   expedition: string
   year: number
+  cuatrimestre?: Cuatrimestre
   list: ParticipantForLottery[]
 }
 
@@ -122,6 +127,7 @@ export interface LotteryResponse {
 export interface InsertRequest {
   expedition: string
   year: number
+  cuatrimestre?: Cuatrimestre
   list: ParticipantForInsert[]
 }
 
@@ -154,6 +160,7 @@ export interface ExpeditionListResponse {
 export interface ExpeditionHistorialItem {
   name: string
   year: number
+  cuatrimestre: Cuatrimestre
 }
 
 export interface ExpeditionHistorialResponse {
