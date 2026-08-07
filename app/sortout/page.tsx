@@ -458,10 +458,31 @@ export default function SortoutPage() {
             <Label className="text-foreground">Archivo Excel</Label>
             <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">Formato esperado</span> (los nombres de columna no distinguen mayúsculas ni tildes):
-              <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                <li><strong className="text-foreground">Padrón</strong> o <strong className="text-foreground">Documento</strong>: identifica al participante</li>
-                <li><strong className="text-foreground">Carrera</strong></li>
-                <li>Opcionales: Teléfono, Nombre, Apellido (se completan desde la base de FIUBA si faltan) e Instagram (duplica el puntaje si se completó)</li>
+              <ul className="mt-1 list-disc space-y-1 pl-4">
+                <li>
+                  <strong className="text-foreground">Padrón</strong> / <strong className="text-foreground">Censo</strong> / <strong className="text-foreground">Documento</strong> / <strong className="text-foreground">DNI</strong>{" "}
+                  <span className="italic">(obligatoria, al menos una)</span>: número que identifica al participante. Ej: <em>105692</em> o <em>DNI40123456</em>
+                </li>
+                <li>
+                  <strong className="text-foreground">Carrera</strong>{" "}
+                  <span className="italic">(obligatoria)</span>: texto con el nombre de la carrera. Ej: <em>Ingeniería Informática</em>
+                </li>
+                <li>
+                  <strong className="text-foreground">Teléfono</strong>{" "}
+                  <span className="italic">(opcional)</span>: número de contacto, como texto o número. Ej: <em>1122334455</em>
+                </li>
+                <li>
+                  <strong className="text-foreground">Nombre</strong>{" "}
+                  <span className="italic">(opcional)</span>: texto. Se usa solo si el padrón/documento no se encuentra en la base de FIUBA. Ej: <em>Juan</em>
+                </li>
+                <li>
+                  <strong className="text-foreground">Apellido</strong>{" "}
+                  <span className="italic">(opcional)</span>: texto, mismo uso que Nombre. Ej: <em>Pérez</em>
+                </li>
+                <li>
+                  <strong className="text-foreground">Instagram</strong> / <strong className="text-foreground">IG</strong>{" "}
+                  <span className="italic">(opcional)</span>: cualquier valor no vacío (usuario, &quot;sí&quot;, etc.) duplica el puntaje del participante (x2). Ej: <em>@juanperez</em>
+                </li>
               </ul>
             </div>
             <ExcelUpload
